@@ -708,7 +708,22 @@ function renderProfile(){
     '<div class="note">In risparmio: GPS a bassa precisione, nome via aggiornato ogni 60 secondi invece di 20, animazioni disattivate. Si attiva da solo sotto il 20% se il browser espone il livello batteria (Safari su iPhone non lo espone).</div></div>' +
     '<div class="card"><h3>📦 Dati aperti</h3><p class="muted">Dataset anonimizzato: niente nomi, targhe o licenze; coordinate arrotondate a circa 1 km. In produzione lo stesso formato è servito via API REST e SFTP ai soggetti accreditati.</p>' +
     '<div class="row" style="margin-top:8px"><button class="btn sec" onclick="exportData(\'json\')">JSON</button><button class="btn sec" onclick="exportData(\'csv\')">CSV</button></div></div>' +
+    deleteCard() +
     '<div class="card"><h3>🔒 Privacy</h3><button class="btn sec" onclick="openModal(\'m-privacy\')">Leggi l’informativa</button>' + (isLocal() ? '<button class="btn sec" style="margin-top:8px" onclick="resetDemo()">Ripristina dati demo</button>' : '') + '</div>';
+}
+// Cancellazione dell'account: richiesta dagli store; raggiungibile anche dal sito con ?account=elimina.
+function deleteCard(){
+  const has = backend && backend.hasSession();
+  return '<div class="card" id="deleteCard"><h3>🗑️ Elimina account e dati</h3>' +
+    '<p class="muted">Cancelliamo subito: profilo e accesso, punti, condivisioni della corsa, segnalazioni e repliche non ancora pubblicate (con foto, video e audio). ' +
+    'Le segnalazioni già pubblicate restano come contributo anonimo: il tuo nome viene cancellato. L\'operazione non si può annullare.</p>' +
+    (has ? '<button class="btn red" style="margin-top:10px" onclick="deleteAccount()">Elimina account e dati</button>'
+         : '<p class="muted" style="margin-top:8px">Per cancellare il tuo account accedi con lo stesso metodo che usi di solito.</p><button class="btn sec" style="margin-top:8px" onclick="openModal(\'m-login\')">Accedi</button>') + '</div>';
+}
+async function deleteAccount(){
+  if (!(await confirmDialog('Eliminare account e dati?', 'Profilo, punti e contenuti non pubblicati verranno cancellati subito. Non si può annullare.', 'Elimina definitivamente'))) return;
+  try { await backend.deleteAccount(); await reloadData(); renderProfile(); toast('Account e dati cancellati.'); }
+  catch(e) { toast(e.message); }
 }
 function myReportsCard(){
   if (!DB.myReports.length) return '';
@@ -959,9 +974,13 @@ async function init(){
   if (!DB.privacyOk) openModal('m-privacy');
   await backend.init(onAuthChange);
   await reloadData();
+  if (new URLSearchParams(location.search).get('account') === 'elimina') {
+    if (DB.privacyOk) closeModal('m-privacy');
+    openTab('profilo'); const c = $('#deleteCard'); if (c) c.scrollIntoView({block:'center'});
+  }
 }
 document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

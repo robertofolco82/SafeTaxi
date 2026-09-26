@@ -165,6 +165,15 @@ export function createSupabaseBackend(url, key){
     updateLiveShare: (id, p, street) => (isNative() ? nativeRpc : call)('update_ride_share', {p_id:id, p_lat:p.lat, p_lng:p.lng, p_street:street || null}),
     endLiveShare: id => call('end_ride_share', {p_id:id}),
     getLiveShare: token => call('get_ride_share', {p_token:token}),
+    hasSession: () => !!session,
+    // Cancellazione dell'account (anche anonimo): contenuti non pubblicati, file, punti, profilo e accesso.
+    async deleteAccount(){
+      if (!session) throw new Error('Nessun account o dato da cancellare su questo dispositivo.');
+      const {error} = await sb.functions.invoke('delete-account', {body: {}});
+      if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch(e) {} throw new Error(m); }
+      await sb.auth.signOut({scope: 'local'});
+      session = null;
+    },
     async role(){ return userFrom(session) ? (await call('my_role')) || 'utente' : 'utente'; },
     async submitDriverReply(reportId, identifier, contact, body){
       await ensureSession();

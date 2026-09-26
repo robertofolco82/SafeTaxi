@@ -107,7 +107,7 @@ test('registrazione con conferma email, segnalazione verificata, punti alla pubb
 
   // Senza conferma non si entra.
   await page.fill('#loginPwd', 'password-di-prova-1');
-  await page.getByRole('button', {name: 'Accedi', exact: true}).click();
+  await page.locator('#m-login').getByRole('button', {name: 'Accedi', exact: true}).click();
   await expect(page.locator('#toast')).toContainText('Email non ancora confermata');
   // Il rifiuto (HTTP 400) di questo tentativo è voluto: il browser lo registra in console.
   page.errors = page.errors.filter(e => !e.includes('status of 400'));
@@ -259,7 +259,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
     await page.getByRole('button', {name: 'Accedi o registrati'}).click();
     await page.fill('#loginEmail', modEmail);
     await page.fill('#loginPwd', modPassword);
-    await page.getByRole('button', {name: 'Accedi', exact: true}).click();
+    await page.locator('#m-login').getByRole('button', {name: 'Accedi', exact: true}).click();
     await page.getByRole('button', {name: 'Apri la moderazione'}).click();
   };
   await page.evaluate(() => localStorage.clear());
@@ -371,4 +371,47 @@ test('tracking live: il contatto segue la corsa dal link e a fine corsa non vede
   expect(await rest(`ride_share_points?share_id=eq.${share.id}&select=id`)).toEqual([]);
   expect(viewerErrors).toEqual([]);
   await viewerCtx.close();
+});
+
+test('cancellazione dell\'account dal sito: dati personali e contenuti non pubblicati spariscono', async ({page}) => {
+  test.setTimeout(90000);
+  const stamp = Date.now(), email = `cancella.${stamp}@example.com`, password = 'password-cancella-1';
+  const user = await (await fetch(`${API}/auth/v1/admin/users`, {method: 'POST', headers: serviceHeaders(),
+    body: JSON.stringify({email, password, email_confirm: true})})).json();
+  // Due segnalazioni dell'utente: una già pubblicata, una in attesa con un audio allegato.
+  const sb = createClient(API, PUBLISHABLE, {auth: {persistSession: false}});
+  await sb.auth.signInWithPassword({email, password});
+  const submit = async (d, plate) => (await sb.rpc('submit_report', {p_city: 'roma', p_type: 'altro', p_rating: 2, p_description: d,
+    p_reporter_name: 'Utente Da Cancellare', p_plate: plate, p_license: '77'})).data;
+  const published = await submit(`Pubblicata ${stamp}: resta anonima dopo la cancellazione.`, 'CA' + String(stamp).slice(-3) + 'NC');
+  const pending = await submit(`In attesa ${stamp}: sparisce con l'account.`, 'CB' + String(stamp).slice(-3) + 'NC');
+  const audioPath = `${pending}/${crypto.randomUUID()}.wav`;
+  expect((await sb.storage.from('attachments').upload(audioPath, wav(), {contentType: 'audio/wav'})).error).toBeNull();
+  expect((await sb.functions.invoke('register-attachment', {body: {report_id: pending, path: audioPath, kind: 'audio'}})).error).toBeNull();
+  await rest(`reports?id=eq.${published}`, {method: 'PATCH', body: JSON.stringify({status: 'pubblicata'}), headers: {Prefer: 'return=minimal'}});
+  expect((await rest(`points_ledger?user_id=eq.${user.id}&select=delta`)).length).toBe(1);
+
+  // Dal sito: il link ?account=elimina porta alla sezione di cancellazione.
+  await page.goto('/?account=elimina');
+  await expect(page.locator('#deleteCard')).toContainText('Per cancellare il tuo account accedi');
+  await page.locator('#deleteCard').getByRole('button', {name: 'Accedi'}).click();
+  await page.fill('#loginEmail', email);
+  await page.fill('#loginPwd', password);
+  await page.locator('#m-login').getByRole('button', {name: 'Accedi', exact: true}).click();
+  await page.locator('#profileBtn').click();
+  await page.locator('#deleteCard').getByRole('button', {name: 'Elimina account e dati'}).click();
+  await page.locator('#cYes').click();
+  await expect(page.locator('#toast')).toContainText('Account e dati cancellati');
+  await expect(page.locator('#profileBox')).toContainText('Ospite');
+  // Dopo la cancellazione supabase-js chiama comunque /logout, che risponde 403 (utente non più esistente):
+  // la sessione locale viene cancellata lo stesso. Errore atteso, registrato dal browser in console.
+  page.errors = page.errors.filter(e => !e.includes('status of 403'));
+
+  expect((await fetch(`${API}/auth/v1/admin/users/${user.id}`, {headers: serviceHeaders()})).status).toBe(404);
+  expect(await rest(`reports?id=eq.${pending}&select=id`)).toEqual([]);
+  expect(await rest(`reports?id=eq.${published}&select=id,description`)).toHaveLength(1);
+  expect(await rest(`points_ledger?user_id=eq.${user.id}&select=id`)).toEqual([]);
+  expect((await fetch(`${API}/storage/v1/object/attachments/${audioPath}`, {headers: serviceHeaders()})).ok).toBe(false);
+  // Con le vecchie credenziali non si entra più.
+  expect((await createClient(API, PUBLISHABLE, {auth: {persistSession: false}}).auth.signInWithPassword({email, password})).error).not.toBeNull();
 });

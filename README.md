@@ -91,6 +91,12 @@ Regole principali:
 - Rating del tassista (`get_driver_rating`) solo con almeno 5 segnalazioni verificate e pubblicate.
 - Verificata = utente non anonimo con email confermata. I punti si assegnano alla pubblicazione, uguali per positive e negative.
 
+### Cancellazione dell'account
+
+Profilo → **Elimina account e dati**, anche per chi ha usato l'app senza registrarsi. Dal sito: https://safetaxi-nu.vercel.app/?account=elimina (link da indicare negli store). La funzione `delete-account` cancella segnalazioni e repliche non pubblicate con i loro file, il nome del segnalatore e i contatti, poi l'utente (a cascata profilo, punti e condivisioni della corsa). Le segnalazioni pubblicate restano anonime.
+
+Bozze delle dichiarazioni per gli store: `docs/store/`.
+
 ### Tracking live
 
 Scheda **Corsa → 🔴 Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
