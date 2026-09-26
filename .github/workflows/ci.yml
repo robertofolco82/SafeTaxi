@@ -29,3 +29,15 @@ jobs:
             playwright-report/
             test-results/
           retention-days: 7
+
+  db:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx supabase db start
+      - run: npm run test:db
