@@ -114,7 +114,7 @@ test('registrazione con conferma email, segnalazione verificata, punti alla pubb
 
   // Link di conferma dall'email: l'app completa l'accesso al ritorno.
   await page.goto(await lastEmailLink(email, 'Confirm'));
-  await expect(page.locator('#profileBtn')).toHaveText('🙂');
+  await expect(page.locator('#profileBtn')).toHaveAttribute('data-auth', 'in');
   await page.locator('#profileBtn').click();
   await expect(page.locator('#profileBox')).toContainText(email);
   await expect(page.locator('#profileBox')).toContainText('verificato');
@@ -171,7 +171,7 @@ test('allegati: foto ripulita e audio caricati, verificati dal server; la foto a
   const description = `Allegati ${Date.now()}: tassista al telefono per tutta la corsa, audio e foto.`;
   await page.getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
-  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await page.setInputFiles('#micAudio', {name: 'registrazione.wav', mimeType: 'audio/wav', buffer: wav()});
   await expect(page.locator('#thumbs .thumb')).toHaveCount(2);
   await page.fill('#reportForm [name=name]', 'Paolo Neri');
@@ -239,7 +239,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   // 1. Un ospite invia la segnalazione con una foto.
   await page.getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
-  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await page.fill('#reportForm [name=name]', 'Paola Blu');
   await page.fill('#reportForm [name=licenza]', '4455');
   await page.fill('#reportForm [name=targa]', plate);
@@ -274,7 +274,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   // 3. Sfoca una targa trascinando sulla foto: la foto viene sostituita e le targhe risultano verificate.
   const download = async p => Buffer.from(await (await fetch(`${API}/storage/v1/object/attachments/${p}`, {headers: serviceHeaders()})).arrayBuffer()).toString('base64');
   const originalPhoto = await download(photoBefore.storage_path);
-  await card.getByRole('button', {name: '🚗 Sfoca targhe'}).click();
+  await card.getByRole('button', {name: 'Sfoca targhe'}).click();
   const canvas = page.locator('#blurCanvas');
   await expect(canvas).toBeVisible();
   await expect.poll(() => canvas.evaluate(c => c.width)).toBeGreaterThan(100);
@@ -301,9 +301,9 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   expect(diff.inside).toBeGreaterThan(3*diff.outside);
 
   // 4. Approva la foto e pubblica la segnalazione: compare nel feed con la foto.
-  await card.getByRole('button', {name: '🌐 Targhe ok, pubblica'}).click();
+  await card.getByRole('button', {name: 'Targhe ok, pubblica'}).click();
   await expect(page.locator('#toast')).toContainText('Foto approvata');
-  await card.getByRole('button', {name: '✅ Pubblica'}).click();
+  await card.getByRole('button', {name: 'Pubblica', exact: true}).click();
   await expect(page.locator(`[data-report="${report.id}"]`)).toHaveCount(0);
   await page.getByRole('button', {name: /Home/}).click();
   const item = page.locator('#feed .feed-item', {hasText: description.slice(0, 30)});
@@ -325,9 +325,9 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   await page.locator('#m-privacy').getByRole('button', {name: 'Ho capito'}).click();
   await loginModerator();
   const replyCard = page.locator('[data-reply]', {hasText: 'la ricevuta lo dimostra'});
-  await expect(replyCard).toContainText('✅ corrisponde alla segnalazione');
+  await expect(replyCard).toContainText('corrisponde alla segnalazione');
   await expect(replyCard).toContainText('tassista@example.com');
-  await replyCard.getByRole('button', {name: '✅ Pubblica'}).click();
+  await replyCard.getByRole('button', {name: 'Pubblica', exact: true}).click();
   await expect(page.locator('#toast')).toContainText('Pubblicata');
   await page.getByRole('button', {name: /Home/}).click();
   await expect(item.locator('.reply')).toContainText('la ricevuta lo dimostra');
@@ -339,7 +339,7 @@ test('tracking live: il contatto segue la corsa dal link e a fine corsa non vede
   await page.fill('#lookupInput', 'AB123CD');
   await page.evaluate(() => window.simulateRide());
   await expect(page.locator('#rideStreet')).toContainText('Via del Viminale', {timeout: 10000});
-  await page.getByRole('button', {name: '🔴 Condividi la corsa in tempo reale'}).click();
+  await page.getByRole('button', {name: 'Condividi la corsa in tempo reale'}).click();
   await expect(page.locator('#liveState')).toContainText('Condivisione attiva fino alle');
   await expect(page.locator('#shareText')).toHaveValue(/Segui la corsa in tempo reale: http:\/\/127\.0\.0\.1:4174\/\?live=/);
   const link = (await page.locator('#shareText').inputValue()).match(/http:\/\/127\.0\.0\.1:4174\/\?live=[A-Za-z0-9_-]+/)[0];

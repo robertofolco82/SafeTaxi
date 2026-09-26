@@ -108,7 +108,7 @@ test('export dati aperti senza targhe né licenze', async ({page}) => {
 test('foto allegata: metadati rimossi e volto sfocato sul dispositivo', async ({page}) => {
   await page.getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
-  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await expect(page.locator('#thumbs .thumb')).toHaveAttribute('title', /1 volto sfocato/);
   const out = await page.locator('#thumbs img').evaluate(async img => {
     const b = new Uint8Array(await (await fetch(img.src)).arrayBuffer());

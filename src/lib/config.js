@@ -41,9 +41,12 @@ export const STORES = {
  freenow:{web:'https://www.free-now.com/it/'},
  whereareu:{ios:'https://apps.apple.com/it/app/112-where-are-u/id888964800',and:'https://play.google.com/store/apps/details?id=it.Beta80Group.whereareu',web:'https://apps.apple.com/it/app/112-where-are-u/id888964800'}
 };
-export const TYPES = {positiva:'👍 Esperienza positiva',tariffa:'💰 Tariffa scorretta',rifiuto:'🚫 Rifiuto corsa o POS',percorso:'🛣️ Percorso allungato',comportamento:'😠 Comportamento scorretto',sicurezza:'⚠️ Guida pericolosa',igiene:'🧼 Veicolo in cattive condizioni',altro:'❓ Altro'};
+export const TYPES = {positiva:'Esperienza positiva',tariffa:'Tariffa scorretta',rifiuto:'Rifiuto corsa o POS',percorso:'Percorso allungato',comportamento:'Comportamento scorretto',sicurezza:'Guida pericolosa',igiene:'Veicolo in cattive condizioni',altro:'Altro'};
+// Icona per tipo di segnalazione (nome icona in src/lib/icons.js): mai nel testo, solo nelle liste con markup.
+export const TYPE_ICONS = {positiva:'thumbs-up',tariffa:'banknote',rifiuto:'ban',percorso:'route',comportamento:'octagon-alert',sicurezza:'triangle-alert',igiene:'spray-can',altro:'circle-help'};
 export const NEG = Object.keys(TYPES).filter(k => k !== 'positiva');
-export const FILTERS = {all:'Tutti',rec:'🏆 Recommended',h24:'🕐 24/7',airport:'✈️ Aeroporti',app:'📱 App'};
+export const FILTERS = {all:'Tutti',rec:'Recommended',h24:'24/7',airport:'Aeroporti',app:'App'};
+export const FILTER_ICONS = {rec:'trophy',h24:'clock',airport:'plane-takeoff',app:'smartphone'};
 export const LEVELS = [{min:0,name:'Passeggero'},{min:200,name:'Osservatore'},{min:500,name:'Contributor'},{min:1000,name:'Guardiano'}];
 export const REWARDS = [{n:'Buono trasporto pubblico 10 €',c:500},{n:'Sconto 15 € su corsa partner',c:1000},{n:'Donazione 20 € a ONLUS sicurezza stradale',c:1500}];
 export const MIN_DRIVER_REPORTS = 5;
