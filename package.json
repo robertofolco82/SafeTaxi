@@ -18,6 +18,7 @@
     "db:seed": "node scripts/generate-seed.mjs"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.117.2",
     "leaflet": "^1.9.4"
   },
   "devDependencies": {

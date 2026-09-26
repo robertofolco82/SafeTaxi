@@ -2,7 +2,7 @@
 
 App gratuita per segnalare comportamenti scorretti o positivi dei taxi in Italia: SOS, tracking della corsa, rating dei tassisti, heatmap nazionale e prenotazione.
 
-**Stato:** prototipo. Tutti i dati sono DEMO e non c'è ancora un backend (i dati restano nel browser). Contesto, requisiti e regole del progetto sono in [`CLAUDE.md`](CLAUDE.md).
+**Stato:** prototipo collegato al backend Supabase di sviluppo (dati DEMO). Accesso con email, Google o anonimo. Contesto, requisiti e regole del progetto sono in [`CLAUDE.md`](CLAUDE.md).
 
 ## Avvio in locale
 
@@ -21,7 +21,7 @@ npm run dev        # server di sviluppo su http://localhost:5173
 | `npm run build` | Crea la versione di produzione in `dist/` |
 | `npm run preview` | Serve localmente la versione di produzione |
 | `npm test` | Test unitari (Vitest) sulle regole di calcolo e privacy |
-| `npm run test:e2e` | Test end-to-end (Playwright) sui flussi principali; richiede Chromium (`npx playwright install chromium`) |
+| `npm run test:e2e` | Test end-to-end (Playwright): progetto `demo` (senza backend) e `supabase` (stack locale avviato); richiede Chromium (`npx playwright install chromium`) |
 | `npm run test:db` | Test del database (pgTAP); richiede il database locale avviato |
 | `npm run db:seed` | Rigenera `supabase/seed.sql` dai dati DEMO dell'app |
 
@@ -31,7 +31,8 @@ npm run dev        # server di sviluppo su http://localhost:5173
 index.html          markup dell'app
 src/main.js         punto di ingresso (CSS di Leaflet, stili, app)
 src/styles.css      stili
-src/app.js          interfaccia: DOM, mappe, stato locale
+src/app.js          interfaccia: DOM, mappe, stato
+src/backend/        dati e accesso: supabase.js (reale) e local.js (demo nel browser)
 src/lib/            regole pure, senza DOM, coperte dai test
   config.js         città, cooperative, tipi, soglie e punti (valori DEMO)
   utils.js          formattazione, targhe, distanze
@@ -39,17 +40,31 @@ src/lib/            regole pure, senza DOM, coperte dai test
   opendata.js       export anonimizzato
   seed.js           segnalazioni DEMO con seed fisso
 tests/unit/         test Vitest
-tests/e2e/          test Playwright (le chiamate a OpenStreetMap sono simulate)
+tests/e2e/          test Playwright (OpenStreetMap simulato): demo.spec.js e supabase.spec.js
+docs/               guide (configurazione dell'accesso)
 ```
 
 ## Database (Supabase)
 
-Lo schema è in `supabase/migrations/`, i dati DEMO per lo sviluppo in `supabase/seed.sql` (generato con `npm run db:seed`, mai da caricare in produzione). L'app non usa ancora il database: il collegamento arriva con l'autenticazione (blocco 2b).
+Lo schema è in `supabase/migrations/`, i dati DEMO per lo sviluppo in `supabase/seed.sql` (generato con `npm run db:seed`, mai da caricare in produzione). L'app legge e scrive sul database tramite `src/backend/supabase.js`.
+
+### Modalità dell'app
+
+| File | Backend | Uso |
+|---|---|---|
+| `.env` | Supabase di sviluppo (remoto) | `npm run dev`, build di Vercel |
+| `.env.test` | demo locale (dati nel browser, accesso simulato) | test end-to-end `demo` |
+| `.env.integration` | Supabase locale (`npx supabase start`) | test end-to-end `supabase` |
+
+I file `.env*` contengono solo valori pubblici (URL e chiave *publishable*). Valori personali o segreti vanno in `.env.local`, ignorato da git.
+
+L'accesso (email con conferma, Google, anonimo) richiede alcune impostazioni nei pannelli di Supabase e Google: vedi [`docs/configurazione-accesso.md`](docs/configurazione-accesso.md).
 
 In locale serve Docker:
 
 ```bash
-npx supabase db start    # avvia Postgres locale con migrazioni e dati DEMO
+npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta
+                         # avvia database, autenticazione, API ed email di prova (Mailpit su http://127.0.0.1:54324)
 npm run test:db          # test pgTAP su regole di accesso, limiti anti-fake, moderazione e punti
 npx supabase db reset    # riparte da zero (riapplica migrazioni e seed)
 ```

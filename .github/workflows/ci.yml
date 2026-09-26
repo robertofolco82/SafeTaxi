@@ -18,7 +18,7 @@ jobs:
       - run: npm test
       - run: npm run build
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e
+      - run: npm run test:e2e -- --project=demo
         env:
           CI: true
       - uses: actions/upload-artifact@v4
@@ -39,5 +39,17 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx supabase db start
+      - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta
       - run: npm run test:db
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e -- --project=supabase
+        env:
+          CI: true
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report-supabase
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

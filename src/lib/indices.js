@@ -1,6 +1,6 @@
 /* Indici e regole di calcolo (Termometro, stime, RECOMMENDED, livelli) */
-import {CITIES, LEVELS} from './config.js';
-import {haversine} from './utils.js';
+import {CITIES, LEVELS, MIN_DRIVER_REPORTS} from './config.js';
+import {haversine, normPlate, maskPlate} from './utils.js';
 
 // Termometro 0–100: solo segnalazioni verificate, peso dimezzato ogni 90 giorni
 export function indexOf(reps, now = Date.now()){ let w = 0, s = 0; reps.forEach(r => { if (!r.verified) return; const wt = Math.pow(0.5, ((now - r.createdAt)/864e5)/90); w += wt; s += wt*(r.rating-1)*25; }); return w ? Math.round(s/w) : null; }
@@ -30,4 +30,15 @@ export function level(p){
   let i = 0; LEVELS.forEach((l, j) => { if (p >= l.min) i = j; });
   const next = LEVELS[i+1];
   return {name:LEVELS[i].name, next, pct: next ? Math.round((p - LEVELS[i].min)/(next.min - LEVELS[i].min)*100) : 100};
+}
+// Rating del tassista in modalità demo locale: stessa risposta della funzione get_driver_rating del database.
+export function driverRatingFrom(reports, query){
+  const q = normPlate(query);
+  if (q.length < 2) return {sufficient:false, verified_count:0, min_required:MIN_DRIVER_REPORTS};
+  const reps = reports.filter(r => r.verified && (normPlate(r.targa) === q || normPlate(r.licenza) === q));
+  if (reps.length < MIN_DRIVER_REPORTS) return {sufficient:false, verified_count:reps.length, min_required:MIN_DRIVER_REPORTS};
+  const issues = {};
+  reps.filter(r => r.type !== 'positiva').forEach(r => issues[r.type] = (issues[r.type] || 0) + 1);
+  return {sufficient:true, verified_count:reps.length, min_required:MIN_DRIVER_REPORTS, plate_masked:maskPlate(q),
+    avg_rating:Math.round(reps.reduce((a, r) => a + r.rating, 0)/reps.length*10)/10, issues};
 }
