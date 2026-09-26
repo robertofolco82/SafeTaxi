@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#0f766e">
+<meta name="theme-color" content="#0E1420">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Safe Taxi">
 <title>Safe Taxi</title>
@@ -12,6 +12,7 @@
   Dati marcati DEMO/SEGNAPOSTO: da sostituire con fonti ufficiali prima del rilascio.
   Numeri di telefono cooperative: DA VERIFICARE con le cooperative.
   Mappe: Leaflet + OpenStreetMap (in produzione usare un tile provider commerciale o Google Maps con API key).
+  Icone: libreria Lucide (SVG, mai emoji), montate da src/app.js su ogni <span data-icon="...">.
 -->
 <link rel="icon" href="data:,">
 </head>
@@ -21,20 +22,20 @@
   <header class="top"><div class="brand">Safe Taxi<small>Corsa condivisa in tempo reale</small></div></header>
   <main>
     <div class="card">
-      <div class="row between"><h3>📍 Dove si trova il taxi</h3><span id="liveStatus" class="badge">…</span></div>
+      <div class="row between"><h3><span data-icon="map-pin" data-icon-size="16"></span>Dove si trova il taxi</h3><span id="liveStatus" class="badge">…</span></div>
       <div class="map" id="liveMap"></div>
       <div style="margin:10px 0"><div class="muted">Sta percorrendo</div><div class="street" id="liveStreet">Carico…</div><div class="muted" id="liveInfo"></div></div>
       <div class="note">Hai ricevuto questo link da chi è in taxi. La posizione si aggiorna da sola ed è visibile solo durante la corsa: alla fine viene cancellata.</div>
-      <button class="btn red" style="margin-top:10px" onclick="call112()">🚨 Chiama il 112</button>
+      <button class="btn red" style="margin-top:10px" onclick="call112()"><span data-icon="phone-call" data-icon-size="16"></span>Chiama il 112</button>
       <p class="muted" style="margin-top:8px">Chiedi sempre conferma: il numero di emergenza si usa solo in caso di reale pericolo.</p>
     </div>
   </main>
 </div>
 <div class="app">
   <header class="top">
-    <div class="brand">🛡️ Safe Taxi<small>Segnala. Valuta. Viaggia sicuro.</small></div>
-    <button class="icon-btn" onclick="openTab('news')" aria-label="News">📰</button>
-    <button class="icon-btn" onclick="openTab('profilo')" aria-label="Profilo" id="profileBtn">👤</button>
+    <div class="brand"><span data-icon="shield-check" data-icon-size="20"></span><span class="brand-text">Safe Taxi<small>Segnala. Valuta. Viaggia sicuro.</small></span></div>
+    <button class="icon-btn" onclick="openTab('news')" aria-label="News"><span data-icon="newspaper" data-icon-size="17"></span></button>
+    <button class="icon-btn" onclick="openTab('profilo')" aria-label="Profilo" id="profileBtn"><span data-icon="user" data-icon-size="17"></span></button>
   </header>
   <div id="batteryBanner" class="banner hidden"></div>
 
@@ -43,7 +44,7 @@
     <section class="tab active" id="tab-home">
       <div class="card thermo" id="thermo"></div>
       <div class="card">
-        <h3>🗺️ Dove vai? Stima il costo</h3>
+        <h3><span data-icon="map" data-icon-size="16"></span>Dove vai? Stima il costo</h3>
         <div class="map" id="homeMap"></div>
         <form class="row" style="margin-top:10px" onsubmit="searchDestination(event)">
           <input id="destInput" placeholder="Destinazione (es. Stazione Termini)" autocomplete="off">
@@ -54,11 +55,11 @@
       </div>
       <div class="ad">Spazio sponsor · pubblicità non invasiva (segnaposto)</div>
       <div class="card">
-        <div class="row between"><h3>🔔 Segnalazioni recenti</h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="row between"><h3><span data-icon="bell" data-icon-size="16"></span>Segnalazioni recenti</h3><span class="badge b-demo">DATI DEMO</span></div>
         <div class="chips" style="margin-bottom:10px">
           <button class="chip on" data-feed="all" onclick="setFeedFilter('all')">Tutte</button>
-          <button class="chip" data-feed="pos" onclick="setFeedFilter('pos')">👍 Positive</button>
-          <button class="chip" data-feed="neg" onclick="setFeedFilter('neg')">👎 Negative</button>
+          <button class="chip" data-feed="pos" onclick="setFeedFilter('pos')"><span data-icon="thumbs-up" data-icon-size="13"></span>Positive</button>
+          <button class="chip" data-feed="neg" onclick="setFeedFilter('neg')"><span data-icon="thumbs-down" data-icon-size="13"></span>Negative</button>
         </div>
         <div id="feed"></div>
       </div>
@@ -67,7 +68,7 @@
     <!-- CORSA -->
     <section class="tab" id="tab-corsa">
       <div class="card">
-        <h3>🚕 Chi ti viene a prendere?</h3>
+        <h3><span data-icon="car-taxi-front" data-icon-size="16"></span>Chi ti viene a prendere?</h3>
         <p class="muted">Inserisci targa o licenza per vedere lo storico del tassista.</p>
         <div class="row" style="margin-top:8px">
           <input id="lookupInput" placeholder="Targa o licenza (demo: AB123CD)" autocomplete="off">
@@ -76,7 +77,7 @@
         <div id="lookupResult"></div>
       </div>
       <div class="card">
-        <div class="row between"><h3>📍 Corsa in tempo reale</h3><span id="rideState" class="badge">Non attiva</span></div>
+        <div class="row between"><h3><span data-icon="map-pin" data-icon-size="16"></span>Corsa in tempo reale</h3><span id="rideState" class="badge">Non attiva</span></div>
         <div class="map" id="rideMap"></div>
         <div style="margin:10px 0">
           <div class="muted">Stai percorrendo</div>
@@ -88,14 +89,14 @@
           <div class="stat"><b id="rideKm">0,0 km</b><span>Distanza</span></div>
           <div class="stat"><b id="rideCost">—</b><span>Stima costo</span></div>
         </div>
-        <button class="btn" id="rideBtn" style="margin-top:12px" onclick="toggleRide()">▶️ Inizia corsa</button>
+        <button class="btn" id="rideBtn" style="margin-top:12px" onclick="toggleRide()"><span data-icon="play" data-icon-size="16"></span>Inizia corsa</button>
         <div class="row" style="margin-top:8px">
-          <button class="btn sec" onclick="openShare(false)">📤 Condividi posizione</button>
-          <button class="btn red" onclick="openSOS()">🚨 SOS</button>
+          <button class="btn sec" onclick="openShare(false)"><span data-icon="send" data-icon-size="15"></span>Condividi posizione</button>
+          <button class="btn red" onclick="openSOS()"><span data-icon="siren" data-icon-size="15"></span>SOS</button>
         </div>
-        <button class="btn sec" style="margin-top:8px" onclick="startLiveShare()">🔴 Condividi la corsa in tempo reale</button>
+        <button class="btn sec" style="margin-top:8px" onclick="startLiveShare()"><span data-icon="radio" data-icon-size="15"></span>Condividi la corsa in tempo reale</button>
         <div id="liveState" class="muted" style="margin-top:6px"></div>
-        <button class="btn sec" style="margin-top:8px" onclick="simulateRide()">🧪 Simula percorso (test)</button>
+        <button class="btn sec" style="margin-top:8px" onclick="simulateRide()"><span data-icon="flask-conical" data-icon-size="15"></span>Simula percorso (test)</button>
         <div class="note">La posizione è usata solo durante la corsa. Se attivi la condivisione in tempo reale, chi ha il link vede dove sei fino alla fine della corsa (massimo 3 ore); poi le posizioni vengono cancellate. Nome della via da OpenStreetMap. Con app in background il tracciamento richiede la versione nativa.</div>
       </div>
     </section>
@@ -103,7 +104,7 @@
     <!-- SEGNALA -->
     <section class="tab" id="tab-segnala">
       <form class="card" id="reportForm" onsubmit="submitReport(event)" novalidate>
-        <h2>📝 Nuova segnalazione</h2>
+        <h2><span data-icon="file-text" data-icon-size="18"></span>Nuova segnalazione</h2>
         <div id="anonNotice" class="note" style="margin-top:0"></div>
         <label class="f">Nome e cognome <span class="req">*</span></label>
         <input name="name" autocomplete="name">
@@ -128,13 +129,13 @@
         <label class="f">Descrizione dell'accaduto <span class="req">*</span></label>
         <textarea name="description" placeholder="Cosa è successo? (minimo 20 caratteri)"></textarea>
         <label class="f">Luogo dell'accaduto</label>
-        <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()">📍 Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>
+        <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()"><span data-icon="map-pin" data-icon-size="14"></span>Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>
         <label class="f">Allegati (max 6 file, 10 MB ciascuno)</label>
         <div class="row" style="flex-wrap:wrap">
-          <button type="button" class="btn sec sm" onclick="pick('camPhoto')">📷 Foto</button>
-          <button type="button" class="btn sec sm" onclick="pick('camVideo')">🎥 Video</button>
-          <button type="button" class="btn sec sm" onclick="pick('micAudio')">🎙️ Audio</button>
-          <button type="button" class="btn sec sm" onclick="pick('gallery')">🖼️ Galleria</button>
+          <button type="button" class="btn sec sm" onclick="pick('camPhoto')"><span data-icon="camera" data-icon-size="14"></span>Foto</button>
+          <button type="button" class="btn sec sm" onclick="pick('camVideo')"><span data-icon="video" data-icon-size="14"></span>Video</button>
+          <button type="button" class="btn sec sm" onclick="pick('micAudio')"><span data-icon="mic" data-icon-size="14"></span>Audio</button>
+          <button type="button" class="btn sec sm" onclick="pick('gallery')"><span data-icon="image" data-icon-size="14"></span>Galleria</button>
         </div>
         <input type="file" id="camPhoto" accept="image/*" capture="environment" class="hidden">
         <input type="file" id="camVideo" accept="video/*" capture="environment" class="hidden">
@@ -154,16 +155,20 @@
     <!-- MAPPA -->
     <section class="tab" id="tab-mappa">
       <div class="card">
-        <div class="row between"><h3>🌡️ Mappa dell'insoddisfazione</h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="row between"><h3><span data-icon="thermometer" data-icon-size="16"></span>Mappa dell'insoddisfazione</h3><span class="badge b-demo">DATI DEMO</span></div>
         <div class="row" style="margin-bottom:10px">
           <input id="citySearch" list="cityList" placeholder="Cerca una città…" autocomplete="off">
           <datalist id="cityList"></datalist>
           <button class="btn sm" onclick="searchCity()">Vai</button>
-          <button class="btn sec sm" onclick="resetItaly()" aria-label="Vista Italia">🇮🇹</button>
+          <button class="btn sec sm" onclick="resetItaly()" aria-label="Vista Italia"><span data-icon="globe" data-icon-size="16"></span></button>
         </div>
         <div class="map tall" id="italyMap"></div>
         <div class="row muted" style="margin-top:8px;gap:12px;flex-wrap:wrap">
-          <span>🔴 critico</span><span>🟠 scarso</span><span>🟡 così così</span><span>🟢 buono</span><span>· zooma per le singole segnalazioni</span>
+          <span><span class="legend-dot" style="background:var(--st-critical)"></span>critico</span>
+          <span><span class="legend-dot" style="background:var(--st-warning)"></span>scarso</span>
+          <span><span class="legend-dot" style="background:var(--st-caution)"></span>così così</span>
+          <span><span class="legend-dot" style="background:var(--st-good)"></span>buono</span>
+          <span>· zooma per le singole segnalazioni</span>
         </div>
       </div>
       <div class="card" id="nationalStats"></div>
@@ -174,7 +179,7 @@
     <!-- PRENOTA -->
     <section class="tab" id="tab-prenota">
       <div class="card">
-        <h3>📞 Prenota un taxi</h3>
+        <h3><span data-icon="phone" data-icon-size="16"></span>Prenota un taxi</h3>
         <label class="f">Città</label>
         <select id="bookCity" onchange="renderBook()"></select>
         <div class="chips" style="margin-top:10px" id="bookFilters"></div>
@@ -185,7 +190,7 @@
     <!-- NEWS -->
     <section class="tab" id="tab-news">
       <div class="card">
-        <div class="row between"><h2>📰 News dal settore</h2><span class="badge b-demo">SEGNAPOSTO</span></div>
+        <div class="row between"><h2><span data-icon="newspaper" data-icon-size="18"></span>News dal settore</h2><span class="badge b-demo">SEGNAPOSTO</span></div>
         <p class="muted">In produzione il feed arriva dal backend: aggregazione RSS di testate e comunicati istituzionali, sempre con link all'articolo originale.</p>
       </div>
       <div id="newsList"></div>
@@ -198,21 +203,21 @@
 </div>
 
 <nav class="tabs">
-  <button data-tab="home" class="on" onclick="openTab('home')"><b>🏠</b>Home</button>
-  <button data-tab="corsa" onclick="openTab('corsa')"><b>🚕</b>Corsa</button>
-  <button data-tab="segnala" onclick="openTab('segnala')"><b>📝</b>Segnala</button>
-  <button data-tab="mappa" onclick="openTab('mappa')"><b>🗺️</b>Mappa</button>
-  <button data-tab="prenota" onclick="openTab('prenota')"><b>📞</b>Prenota</button>
+  <button data-tab="home" class="on" onclick="openTab('home')"><span data-icon="house" data-icon-size="20"></span>Home</button>
+  <button data-tab="corsa" onclick="openTab('corsa')"><span data-icon="car-taxi-front" data-icon-size="20"></span>Corsa</button>
+  <button data-tab="segnala" onclick="openTab('segnala')"><span data-icon="file-text" data-icon-size="20"></span>Segnala</button>
+  <button data-tab="mappa" onclick="openTab('mappa')"><span data-icon="map" data-icon-size="20"></span>Mappa</button>
+  <button data-tab="prenota" onclick="openTab('prenota')"><span data-icon="phone" data-icon-size="20"></span>Prenota</button>
 </nav>
-<button class="sos-fab" onclick="openSOS()" aria-label="SOS">SOS</button>
+<button class="sos-fab" onclick="openSOS()" aria-label="SOS"><span data-icon="siren" data-icon-size="20"></span>SOS</button>
 
 <!-- MODALE SOS -->
 <div class="modal" id="m-sos"><div class="sheet sos">
-  <h2>🚨 Hai bisogno di aiuto? <button class="x" onclick="closeModal('m-sos')">✕</button></h2>
-  <div class="note" id="sosLoc" style="margin:0 0 12px">📍 Rilevo la posizione…</div>
-  <button class="opt" onclick="call112()"><div class="ic" style="background:#dc2626;color:#fff">📞</div><div><b>Chiama il 112</b><span>Numero Unico di Emergenza · chiede conferma prima di chiamare</span></div></button>
-  <button class="opt" onclick="openStore('whereareu')"><div class="ic" style="background:#fee2e2">🤫</div><div><b>Aiuto senza parlare</b><span>App ufficiale 112 Where ARE U: chiamata silenziosa o chat con la centrale, con invio della posizione</span></div></button>
-  <button class="opt" onclick="closeModal('m-sos');openShare(true)"><div class="ic" style="background:#dcfce7">💬</div><div><b>Avvisa un contatto</b><span>WhatsApp o SMS con posizione, messaggio modificabile</span></div></button>
+  <h2><span data-icon="siren" data-icon-size="18"></span>Hai bisogno di aiuto? <button class="x" onclick="closeModal('m-sos')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
+  <div class="note" id="sosLoc" style="margin:0 0 12px"><span data-icon="map-pin" data-icon-size="13"></span> Rilevo la posizione…</div>
+  <button class="opt" onclick="call112()"><div class="ic" style="background:var(--st-sos);color:#fff"><span data-icon="phone-call" data-icon-size="20"></span></div><div><b>Chiama il 112</b><span>Numero Unico di Emergenza · chiede conferma prima di chiamare</span></div></button>
+  <button class="opt" onclick="openStore('whereareu')"><div class="ic"><span data-icon="mic-off" data-icon-size="20"></span></div><div><b>Aiuto senza parlare</b><span>App ufficiale 112 Where ARE U: chiamata silenziosa o chat con la centrale, con invio della posizione</span></div></button>
+  <button class="opt" onclick="closeModal('m-sos');openShare(true)"><div class="ic"><span data-icon="message-circle" data-icon-size="20"></span></div><div><b>Avvisa un contatto</b><span>WhatsApp o SMS con posizione, messaggio modificabile</span></div></button>
   <div class="note">Safe Taxi non può inviare dati direttamente alle centrali 112. Per l'aiuto senza voce il canale ufficiale è l'app 112 Where ARE U, operativa dove è attivo il NUE 112: installala prima di averne bisogno.</div>
 </div></div>
 
@@ -225,22 +230,22 @@
 
 <!-- MODALE CONDIVISIONE -->
 <div class="modal" id="m-share"><div class="sheet">
-  <h2>📤 Condividi la posizione <button class="x" onclick="closeModal('m-share')">✕</button></h2>
+  <h2><span data-icon="send" data-icon-size="18"></span>Condividi la posizione <button class="x" onclick="closeModal('m-share')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <label class="f">Contatto</label>
   <select id="shareContact" onchange="fillShareText()"></select>
   <input id="sharePhone" placeholder="Numero (es. 333 1234567)" style="margin-top:8px" inputmode="tel">
   <label class="f">Messaggio (modificabile)</label>
   <textarea id="shareText" style="min-height:170px"></textarea>
   <div class="row" style="margin-top:12px">
-    <button class="btn" style="background:#16a34a" onclick="sendShare('whatsapp')">💬 WhatsApp</button>
-    <button class="btn" onclick="sendShare('sms')">✉️ SMS</button>
+    <button class="btn" style="background:#16a34a" onclick="sendShare('whatsapp')"><span data-icon="message-circle" data-icon-size="16"></span>WhatsApp</button>
+    <button class="btn" onclick="sendShare('sms')"><span data-icon="message-square" data-icon-size="16"></span>SMS</button>
   </div>
-  <div class="note">Il link Google Maps mostra la posizione di questo momento. Per farti seguire per tutta la corsa usa "🔴 Condividi la corsa in tempo reale" nella scheda Corsa: il link compare qui nel messaggio.</div>
+  <div class="note">Il link Google Maps mostra la posizione di questo momento. Per farti seguire per tutta la corsa usa "Condividi la corsa in tempo reale" nella scheda Corsa: il link compare qui nel messaggio.</div>
 </div></div>
 
 <!-- MODALE VALUTAZIONE FINE CORSA -->
 <div class="modal" id="m-rate"><div class="sheet">
-  <h2>⭐ Com'è andata? <button class="x" onclick="closeModal('m-rate')">✕</button></h2>
+  <h2><span data-icon="star" data-icon-size="18"></span>Com'è andata? <button class="x" onclick="closeModal('m-rate')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <label class="f">Tassista (cortesia, guida)</label><div class="starpick" id="rateDriver"></div>
   <label class="f">Corsa (percorso, prezzo, veicolo)</label><div class="starpick" id="rateRide"></div>
   <label class="f">Qualcosa non è andato?</label><select id="rateIssue"></select>
@@ -251,9 +256,9 @@
 
 <!-- MODALE LOGIN -->
 <div class="modal" id="m-login"><div class="sheet">
-  <h2>👤 Accedi <button class="x" onclick="closeModal('m-login')">✕</button></h2>
+  <h2><span data-icon="user" data-icon-size="18"></span>Accedi <button class="x" onclick="closeModal('m-login')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <p class="muted" style="margin-bottom:12px">Solo gli utenti registrati con email confermata contribuiscono ai rating e accumulano punti. Senza account puoi inviare valutazioni e usare l'SOS.</p>
-  <button class="opt" onclick="googleLogin()"><div class="ic" style="background:#f1f5f9;font-weight:800">G</div><div><b>Continua con Google</b></div></button>
+  <button class="opt" onclick="googleLogin()"><div class="ic" style="font-weight:800">G</div><div><b>Continua con Google</b></div></button>
   <label class="f">Email</label><input id="loginEmail" type="email" autocomplete="email">
   <label class="f">Password (min. 8 caratteri)</label><input id="loginPwd" type="password" autocomplete="current-password">
   <div class="row" style="margin-top:12px"><button class="btn" onclick="emailLogin()">Accedi</button><button class="btn sec" onclick="emailSignup()">Crea account</button></div>
@@ -262,28 +267,28 @@
 </div></div>
 
 <div class="modal" id="m-newpwd"><div class="sheet">
-  <h2>🔑 Nuova password <button class="x" onclick="closeModal('m-newpwd')">✕</button></h2>
+  <h2><span data-icon="key-round" data-icon-size="18"></span>Nuova password <button class="x" onclick="closeModal('m-newpwd')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <label class="f">Nuova password (min. 8 caratteri)</label><input id="newPwd" type="password" autocomplete="new-password">
   <button class="btn" style="margin-top:12px" onclick="saveNewPassword()">Salva password</button>
 </div></div>
 
 <!-- MODALE PRIVACY -->
 <div class="modal" id="m-reject"><div class="sheet">
-  <h2>❌ Rifiuta <button class="x" onclick="closeModal('m-reject')">✕</button></h2>
+  <h2><span data-icon="ban" data-icon-size="18"></span>Rifiuta <button class="x" onclick="closeModal('m-reject')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <label class="f">Motivo (visibile all'autore)</label>
   <textarea id="rejectReason" placeholder="Es. contenuto offensivo, dati personali di terzi, segnalazione non pertinente"></textarea>
-  <button class="btn red" style="margin-top:12px" onclick="confirmReject()">Rifiuta</button>
+  <button class="btn danger" style="margin-top:12px" onclick="confirmReject()">Rifiuta</button>
 </div></div>
 
 <div class="modal" id="m-blur"><div class="sheet">
-  <h2>🚗 Sfoca le targhe <button class="x" onclick="closeModal('m-blur')">✕</button></h2>
+  <h2><span data-icon="eye-off" data-icon-size="18"></span>Sfoca le targhe <button class="x" onclick="closeModal('m-blur')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <p class="muted">Trascina sulla foto per coprire ogni targa leggibile (e altri dati personali). Il risultato sostituisce la foto originale.</p>
   <div class="blur-wrap"><canvas id="blurCanvas"></canvas></div>
-  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="undoBlur()">↩️ Annulla ultimo</button><button class="btn" id="blurSave" onclick="saveBlur()">Salva e conferma targhe</button></div>
+  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="undoBlur()"><span data-icon="undo-2" data-icon-size="15"></span>Annulla ultimo</button><button class="btn" id="blurSave" onclick="saveBlur()">Salva e conferma targhe</button></div>
 </div></div>
 
 <div class="modal" id="m-reply"><div class="sheet">
-  <h2>💬 Replica del tassista <button class="x" onclick="closeModal('m-reply')">✕</button></h2>
+  <h2><span data-icon="message-square" data-icon-size="18"></span>Replica del tassista <button class="x" onclick="closeModal('m-reply')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <p class="muted">Sei il tassista coinvolto? Puoi rispondere alla segnalazione. La replica viene pubblicata dopo la verifica di un moderatore, che potrà contattarti.</p>
   <label class="f">Targa o numero di licenza <span class="req">*</span></label><input id="replyIdent" autocomplete="off" placeholder="Serve alla verifica, non viene pubblicato">
   <label class="f">Email o telefono per la verifica <span class="req">*</span></label><input id="replyContact" autocomplete="email" placeholder="Non viene pubblicato">
@@ -292,7 +297,7 @@
 </div></div>
 
 <div class="modal" id="m-privacy"><div class="sheet">
-  <h2>🔒 Privacy in breve <button class="x" onclick="closeModal('m-privacy')">✕</button></h2>
+  <h2><span data-icon="lock" data-icon-size="18"></span>Privacy in breve <button class="x" onclick="closeModal('m-privacy')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <div style="font-size:14px;line-height:1.5">
     <p style="margin-bottom:8px"><b>Cosa raccogliamo.</b> I dati della segnalazione (nome, targa, licenza, città, descrizione, allegati) e la posizione solo quando la richiedi tu.</p>
     <p style="margin-bottom:8px"><b>Cosa è pubblico.</b> Nel feed la targa è mascherata e il tuo nome non compare. Il rating di un singolo tassista è visibile solo con almeno 5 segnalazioni verificate.</p>

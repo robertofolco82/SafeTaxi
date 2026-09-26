@@ -1,0 +1,47 @@
+/* Safe Taxi — Design tokens
+   Direzione "C — Blu notte + ciano tecnico": vedi design-system/README.md per il razionale.
+   Unica fonte dei colori/tipografia/raggi/ombre dell'app: src/styles.css legge solo queste variabili. */
+:root{
+  /* --- Colore: brand --- */
+  --st-primary:      #0E1420; /* blu notte: header, bottoni primari, testo forte */
+  --st-primary-600:  #1B2434; /* hover/press dei bottoni primari */
+  --st-accent:       #12B5C9; /* ciano tecnico: badge di verifica, dettagli di fiducia */
+  --st-accent-100:   #E4F7FA; /* sfondo badge verificato */
+  --st-accent-700:   #0B6B78; /* testo su sfondo badge verificato */
+
+  /* --- Colore: semantico (Termometro, stati) --- */
+  --st-critical: #dc2626; /* critico */
+  --st-warning:  #f97316; /* scarso */
+  --st-caution:  #eab308; /* così così */
+  --st-good:     #22c55e; /* buono */
+  --st-great:    #16a34a; /* ottimo */
+  --st-rating:   #F2B807; /* stelle di valutazione, colore riservato al rating */
+
+  /* --- Colore: SOS (isolato, mai riusato altrove) --- */
+  --st-sos: #D7263D;
+
+  /* --- Colore: superfici e testo --- */
+  --st-bg:      #F2F4F7;
+  --st-surface: #FFFFFF;
+  --st-text:    #10151C;
+  --st-muted:   #626C7A;
+  --st-border:  #E3E6EC;
+  --st-border-strong: #C7CCD6;
+
+  /* --- Tipografia ---
+     Titoli: Plus Jakarta Sans (geometrico, distintivo, stile "prodotto curato").
+     Corpo: Inter (altissima leggibilità su schermi piccoli). Entrambi self-hosted (@fontsource). */
+  --st-font-display: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --st-font-body:    'Inter', system-ui, sans-serif;
+
+  /* --- Raggi e ombre: uno stile solo, ripetuto ovunque --- */
+  --st-radius-sm:  10px;
+  --st-radius-md:  14px;
+  --st-radius-lg:  18px;
+  --st-radius-pill: 999px;
+  --st-shadow-card: 0 1px 2px rgba(16,21,28,.08);
+  --st-shadow-fab:  0 6px 16px rgba(215,38,61,.4);
+
+  /* --- Icone (Lucide, licenza ISC): spessore/linea coerenti in tutta l'app --- */
+  --st-icon-stroke: 2;
+}
