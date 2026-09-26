@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f766e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Safe Taxi">
+<title>Safe Taxi</title>
+<!--
+  SAFE TAXI – prototipo funzionante v3 (Vite: codice in src/, regole di calcolo in src/lib/)
+  Dati marcati DEMO/SEGNAPOSTO: da sostituire con fonti ufficiali prima del rilascio.
+  Numeri di telefono cooperative: DA VERIFICARE con le cooperative.
+  Mappe: Leaflet + OpenStreetMap (in produzione usare un tile provider commerciale o Google Maps con API key).
+-->
+<link rel="icon" href="data:,">
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">🛡️ Safe Taxi<small>Segnala. Valuta. Viaggia sicuro.</small></div>
+    <button class="icon-btn" onclick="openTab('news')" aria-label="News">📰</button>
+    <button class="icon-btn" onclick="openTab('profilo')" aria-label="Profilo" id="profileBtn">👤</button>
+  </header>
+  <div id="batteryBanner" class="banner hidden"></div>
+
+  <main>
+    <!-- HOME -->
+    <section class="tab active" id="tab-home">
+      <div class="card thermo" id="thermo"></div>
+      <div class="card">
+        <h3>🗺️ Dove vai? Stima il costo</h3>
+        <div class="map" id="homeMap"></div>
+        <form class="row" style="margin-top:10px" onsubmit="searchDestination(event)">
+          <input id="destInput" placeholder="Destinazione (es. Stazione Termini)" autocomplete="off">
+          <button class="btn sm" type="submit">Cerca</button>
+        </form>
+        <div id="destResults" style="margin-top:8px"></div>
+        <div id="estimateBox"></div>
+      </div>
+      <div class="ad">Spazio sponsor · pubblicità non invasiva (segnaposto)</div>
+      <div class="card">
+        <div class="row between"><h3>🔔 Segnalazioni recenti</h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="chips" style="margin-bottom:10px">
+          <button class="chip on" data-feed="all" onclick="setFeedFilter('all')">Tutte</button>
+          <button class="chip" data-feed="pos" onclick="setFeedFilter('pos')">👍 Positive</button>
+          <button class="chip" data-feed="neg" onclick="setFeedFilter('neg')">👎 Negative</button>
+        </div>
+        <div id="feed"></div>
+      </div>
+    </section>
+
+    <!-- CORSA -->
+    <section class="tab" id="tab-corsa">
+      <div class="card">
+        <h3>🚕 Chi ti viene a prendere?</h3>
+        <p class="muted">Inserisci targa o licenza per vedere lo storico del tassista.</p>
+        <div class="row" style="margin-top:8px">
+          <input id="lookupInput" placeholder="Targa o licenza (demo: AB123CD)" autocomplete="off">
+          <button class="btn sm" onclick="doLookup()">Verifica</button>
+        </div>
+        <div id="lookupResult"></div>
+      </div>
+      <div class="card">
+        <div class="row between"><h3>📍 Corsa in tempo reale</h3><span id="rideState" class="badge">Non attiva</span></div>
+        <div class="map" id="rideMap"></div>
+        <div style="margin:10px 0">
+          <div class="muted">Stai percorrendo</div>
+          <div class="street" id="rideStreet">—</div>
+          <div class="muted" id="rideCoords"></div>
+        </div>
+        <div class="stats3">
+          <div class="stat"><b id="rideTime">00:00</b><span>Durata</span></div>
+          <div class="stat"><b id="rideKm">0,0 km</b><span>Distanza</span></div>
+          <div class="stat"><b id="rideCost">—</b><span>Stima costo</span></div>
+        </div>
+        <button class="btn" id="rideBtn" style="margin-top:12px" onclick="toggleRide()">▶️ Inizia corsa</button>
+        <div class="row" style="margin-top:8px">
+          <button class="btn sec" onclick="openShare(false)">📤 Condividi posizione</button>
+          <button class="btn red" onclick="openSOS()">🚨 SOS</button>
+        </div>
+        <button class="btn sec" style="margin-top:8px" onclick="simulateRide()">🧪 Simula percorso (test)</button>
+        <div class="note">La posizione è usata solo durante la corsa e resta sul dispositivo. Nome della via da OpenStreetMap. Con app in background il tracciamento richiede la versione nativa.</div>
+      </div>
+    </section>
+
+    <!-- SEGNALA -->
+    <section class="tab" id="tab-segnala">
+      <form class="card" id="reportForm" onsubmit="submitReport(event)" novalidate>
+        <h2>📝 Nuova segnalazione</h2>
+        <div id="anonNotice" class="note" style="margin-top:0"></div>
+        <label class="f">Nome e cognome <span class="req">*</span></label>
+        <input name="name" autocomplete="name">
+        <div class="row">
+          <div style="flex:1"><label class="f">Licenza <span class="req">*</span></label><input name="licenza" placeholder="es. 2468"></div>
+          <div style="flex:1"><label class="f">Targa <span class="req">*</span></label><input name="targa" placeholder="AB123CD" style="text-transform:uppercase"></div>
+        </div>
+        <label class="f">Città <span class="req">*</span></label>
+        <select name="city" id="reportCity"></select>
+        <div class="row">
+          <div style="flex:1"><label class="f">Da</label><input name="from" placeholder="Partenza"></div>
+          <div style="flex:1"><label class="f">A</label><input name="to" placeholder="Arrivo"></div>
+        </div>
+        <label class="f">Tipo di segnalazione <span class="req">*</span></label>
+        <select name="type" id="reportType"></select>
+        <label class="f">Valutazione complessiva <span class="req">*</span></label>
+        <div class="starpick" id="reportStars"></div>
+        <div class="row">
+          <div style="flex:1"><label class="f">Importo pagato (€)</label><input name="cost" type="number" min="0" step="0.5" inputmode="decimal"></div>
+          <div style="flex:1"><label class="f">Durata (min)</label><input name="duration" type="number" min="1" step="1" inputmode="numeric"></div>
+        </div>
+        <label class="f">Descrizione dell'accaduto <span class="req">*</span></label>
+        <textarea name="description" placeholder="Cosa è successo? (minimo 20 caratteri)"></textarea>
+        <label class="f">Luogo dell'accaduto</label>
+        <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()">📍 Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>
+        <label class="f">Allegati (max 6 file, 10 MB ciascuno)</label>
+        <div class="row" style="flex-wrap:wrap">
+          <button type="button" class="btn sec sm" onclick="pick('camPhoto')">📷 Foto</button>
+          <button type="button" class="btn sec sm" onclick="pick('camVideo')">🎥 Video</button>
+          <button type="button" class="btn sec sm" onclick="pick('micAudio')">🎙️ Audio</button>
+          <button type="button" class="btn sec sm" onclick="pick('gallery')">🖼️ Galleria</button>
+        </div>
+        <input type="file" id="camPhoto" accept="image/*" capture="environment" class="hidden">
+        <input type="file" id="camVideo" accept="video/*" capture="environment" class="hidden">
+        <input type="file" id="micAudio" accept="audio/*" capture class="hidden">
+        <input type="file" id="gallery" accept="image/*,video/*,audio/*" multiple class="hidden">
+        <div class="thumbs" id="thumbs"></div>
+        <label class="row" style="margin-top:14px;font-size:13px;align-items:flex-start">
+          <input type="checkbox" name="consent" style="width:auto;margin-top:2px">
+ <span>Dichiaro che i fatti sono veritieri e ho letto l'<a href="#" onclick="openPrivacy(event)">informativa privacy</a>. <span class="req">*</span></span>
+        </label>
+        <button class="btn" type="submit" style="margin-top:14px">Invia segnalazione</button>
+        <div class="note">Nel feed pubblico la targa è mascherata e il tuo nome non compare. Evita di riprendere volti di terzi: in produzione volti e targhe nelle immagini vengono sfocati automaticamente.</div>
+      </form>
+    </section>
+
+    <!-- MAPPA -->
+    <section class="tab" id="tab-mappa">
+      <div class="card">
+        <div class="row between"><h3>🌡️ Mappa dell'insoddisfazione</h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="row" style="margin-bottom:10px">
+          <input id="citySearch" list="cityList" placeholder="Cerca una città…" autocomplete="off">
+          <datalist id="cityList"></datalist>
+          <button class="btn sm" onclick="searchCity()">Vai</button>
+          <button class="btn sec sm" onclick="resetItaly()" aria-label="Vista Italia">🇮🇹</button>
+        </div>
+        <div class="map tall" id="italyMap"></div>
+        <div class="row muted" style="margin-top:8px;gap:12px;flex-wrap:wrap">
+          <span>🔴 critico</span><span>🟠 scarso</span><span>🟡 così così</span><span>🟢 buono</span><span>· zooma per le singole segnalazioni</span>
+        </div>
+      </div>
+      <div class="card" id="nationalStats"></div>
+      <div class="card" id="cityStats"></div>
+      <div class="ad">Spazio sponsor (segnaposto)</div>
+    </section>
+
+    <!-- PRENOTA -->
+    <section class="tab" id="tab-prenota">
+      <div class="card">
+        <h3>📞 Prenota un taxi</h3>
+        <label class="f">Città</label>
+        <select id="bookCity" onchange="renderBook()"></select>
+        <div class="chips" style="margin-top:10px" id="bookFilters"></div>
+      </div>
+      <div id="bookList"></div>
+    </section>
+
+    <!-- NEWS -->
+    <section class="tab" id="tab-news">
+      <div class="card">
+        <div class="row between"><h2>📰 News dal settore</h2><span class="badge b-demo">SEGNAPOSTO</span></div>
+        <p class="muted">In produzione il feed arriva dal backend: aggregazione RSS di testate e comunicati istituzionali, sempre con link all'articolo originale.</p>
+      </div>
+      <div id="newsList"></div>
+    </section>
+
+    <!-- PROFILO -->
+    <section class="tab" id="tab-profilo"><div id="profileBox"></div></section>
+  </main>
+</div>
+
+<nav class="tabs">
+  <button data-tab="home" class="on" onclick="openTab('home')"><b>🏠</b>Home</button>
+  <button data-tab="corsa" onclick="openTab('corsa')"><b>🚕</b>Corsa</button>
+  <button data-tab="segnala" onclick="openTab('segnala')"><b>📝</b>Segnala</button>
+  <button data-tab="mappa" onclick="openTab('mappa')"><b>🗺️</b>Mappa</button>
+  <button data-tab="prenota" onclick="openTab('prenota')"><b>📞</b>Prenota</button>
+</nav>
+<button class="sos-fab" onclick="openSOS()" aria-label="SOS">SOS</button>
+
+<!-- MODALE SOS -->
+<div class="modal" id="m-sos"><div class="sheet sos">
+  <h2>🚨 Hai bisogno di aiuto? <button class="x" onclick="closeModal('m-sos')">✕</button></h2>
+  <div class="note" id="sosLoc" style="margin:0 0 12px">📍 Rilevo la posizione…</div>
+  <button class="opt" onclick="call112()"><div class="ic" style="background:#dc2626;color:#fff">📞</div><div><b>Chiama il 112</b><span>Numero Unico di Emergenza · chiede conferma prima di chiamare</span></div></button>
+  <button class="opt" onclick="openStore('whereareu')"><div class="ic" style="background:#fee2e2">🤫</div><div><b>Aiuto senza parlare</b><span>App ufficiale 112 Where ARE U: chiamata silenziosa o chat con la centrale, con invio della posizione</span></div></button>
+  <button class="opt" onclick="closeModal('m-sos');openShare(true)"><div class="ic" style="background:#dcfce7">💬</div><div><b>Avvisa un contatto</b><span>WhatsApp o SMS con posizione, messaggio modificabile</span></div></button>
+  <div class="note">Safe Taxi non può inviare dati direttamente alle centrali 112. Per l'aiuto senza voce il canale ufficiale è l'app 112 Where ARE U, operativa dove è attivo il NUE 112: installala prima di averne bisogno.</div>
+</div></div>
+
+<!-- MODALE CONFERMA -->
+<div class="modal" id="m-confirm"><div class="sheet">
+  <h2 id="cTitle"></h2>
+  <p id="cText" style="margin-bottom:16px;font-size:14px"></p>
+  <div class="row"><button class="btn sec" id="cNo">Annulla</button><button class="btn" id="cYes">Conferma</button></div>
+</div></div>
+
+<!-- MODALE CONDIVISIONE -->
+<div class="modal" id="m-share"><div class="sheet">
+  <h2>📤 Condividi la posizione <button class="x" onclick="closeModal('m-share')">✕</button></h2>
+  <label class="f">Contatto</label>
+  <select id="shareContact" onchange="fillShareText()"></select>
+  <input id="sharePhone" placeholder="Numero (es. 333 1234567)" style="margin-top:8px" inputmode="tel">
+  <label class="f">Messaggio (modificabile)</label>
+  <textarea id="shareText" style="min-height:170px"></textarea>
+  <div class="row" style="margin-top:12px">
+    <button class="btn" style="background:#16a34a" onclick="sendShare('whatsapp')">💬 WhatsApp</button>
+    <button class="btn" onclick="sendShare('sms')">✉️ SMS</button>
+  </div>
+  <div class="note">Il link apre Google Maps sulla posizione attuale (istantanea). Il link di tracciamento continuo richiede il backend; nel frattempo puoi usare "Posizione in tempo reale" di WhatsApp.</div>
+</div></div>
+
+<!-- MODALE VALUTAZIONE FINE CORSA -->
+<div class="modal" id="m-rate"><div class="sheet">
+  <h2>⭐ Com'è andata? <button class="x" onclick="closeModal('m-rate')">✕</button></h2>
+  <label class="f">Tassista (cortesia, guida)</label><div class="starpick" id="rateDriver"></div>
+  <label class="f">Corsa (percorso, prezzo, veicolo)</label><div class="starpick" id="rateRide"></div>
+  <label class="f">Qualcosa non è andato?</label><select id="rateIssue"></select>
+  <label class="f">Importo pagato (€)</label><input id="rateCost" type="number" min="0" step="0.5" inputmode="decimal">
+  <label class="f">Commento</label><textarea id="rateComment" placeholder="Facoltativo"></textarea>
+  <button class="btn" style="margin-top:12px" onclick="submitRating()">Invia valutazione</button>
+</div></div>
+
+<!-- MODALE LOGIN -->
+<div class="modal" id="m-login"><div class="sheet">
+  <h2>👤 Accedi <button class="x" onclick="closeModal('m-login')">✕</button></h2>
+  <p class="muted" style="margin-bottom:12px">Solo gli utenti registrati contribuiscono ai rating e accumulano punti. Senza account puoi inviare valutazioni e usare l'SOS.</p>
+  <button class="opt" onclick="ssoLogin('Apple')"><div class="ic" style="background:#000;color:#fff">🍎</div><div><b>Continua con Apple</b></div></button>
+  <button class="opt" onclick="ssoLogin('Google')"><div class="ic" style="background:#f1f5f9;font-weight:800">G</div><div><b>Continua con Google</b></div></button>
+  <button class="opt" onclick="ssoLogin('Facebook')"><div class="ic" style="background:#1877f2;color:#fff;font-weight:800">f</div><div><b>Continua con Facebook</b></div></button>
+  <label class="f">Email</label><input id="loginEmail" type="email" autocomplete="email">
+  <label class="f">Password (min. 8 caratteri)</label><input id="loginPwd" type="password" autocomplete="current-password">
+  <button class="btn" style="margin-top:12px" onclick="emailLogin()">Accedi / Registrati</button>
+  <div class="note">Prototipo: autenticazione simulata sul dispositivo, la password non viene salvata. In produzione: Supabase Auth o Firebase Auth.</div>
+</div></div>
+
+<!-- MODALE PRIVACY -->
+<div class="modal" id="m-privacy"><div class="sheet">
+  <h2>🔒 Privacy in breve <button class="x" onclick="closeModal('m-privacy')">✕</button></h2>
+  <div style="font-size:14px;line-height:1.5">
+    <p style="margin-bottom:8px"><b>Cosa raccogliamo.</b> I dati della segnalazione (nome, targa, licenza, città, descrizione, allegati) e la posizione solo quando la richiedi tu.</p>
+    <p style="margin-bottom:8px"><b>Cosa è pubblico.</b> Nel feed la targa è mascherata e il tuo nome non compare. Il rating di un singolo tassista è visibile solo con almeno 5 segnalazioni verificate.</p>
+    <p style="margin-bottom:8px"><b>Tutela del tassista.</b> Le segnalazioni sono moderate prima di concorrere ai rating; il tassista può chiedere rettifica e replicare.</p>
+    <p style="margin-bottom:8px"><b>Posizione.</b> Usata per SOS, corsa e segnalazione. Il percorso della corsa resta sul dispositivo.</p>
+    <p style="margin-bottom:8px"><b>Condivisione con terzi.</b> Solo dati aggregati o anonimizzati, con accordo di condivisione.</p>
+    <p style="margin-bottom:8px"><b>Diritti.</b> Accesso, rettifica, cancellazione, opposizione (artt. 15–22 GDPR). Titolare e DPO: da definire.</p>
+    <p class="muted">Sintesi da validare con il DPO prima della pubblicazione.</p>
+  </div>
+  <button class="btn" style="margin-top:12px" onclick="acceptPrivacy()">Ho capito</button>
+</div></div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="/src/main.js"></script>
+</body>
+</html>
