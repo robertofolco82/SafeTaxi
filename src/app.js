@@ -1,11 +1,14 @@
-/* Safe Taxi: logica dell'interfaccia (DOM, mappe, stato locale).
-   Le regole di calcolo pure stanno in ./lib e sono coperte dai test. */
+/* Safe Taxi: logica dell'interfaccia (DOM, mappe, stato).
+   Le regole di calcolo pure stanno in ./lib e sono coperte dai test.
+   I dati arrivano dal backend (./backend): Supabase, oppure demo locale se non configurato. */
 import L from 'leaflet';
-import {CITIES, APPS, COOPS, STORES, TYPES, NEG, FILTERS, REWARDS, MIN_DRIVER_REPORTS, OCCUPANCY, POINTS} from './lib/config.js';
+import {CITIES, APPS, COOPS, STORES, TYPES, NEG, FILTERS, REWARDS, OCCUPANCY} from './lib/config.js';
 import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, stars} from './lib/utils.js';
 import {seedReports} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
+import {STATUS_LABELS, italianPosition} from './lib/remote.js';
+import {createBackend} from './backend/index.js';
 
 /* ================= UTILITY ================= */
 const $ = s => document.querySelector(s);
@@ -15,16 +18,39 @@ const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.p
 const isAndroid = () => /android/i.test(navigator.userAgent);
 
 /* ================= STORAGE ================= */
-const DB_KEY = 'safetaxi.v3';
-let DB = null, memOnly = false;
+// Demo locale: tutto nel browser (DB_KEY). Supabase: nel browser restano solo le preferenze (PREFS_KEY).
+const DB_KEY = 'safetaxi.v3', PREFS_KEY = 'safetaxi.prefs';
+let DB = null, memOnly = false, backend = null, loading = true, loadError = null;
+const isLocal = () => !backend || backend.mode === 'locale';
 function loadDB(){
-  try { const raw = localStorage.getItem(DB_KEY); if (raw) DB = JSON.parse(raw); } catch(e) { memOnly = true; }
-  if (!DB || !Array.isArray(DB.reports)) {
-    DB = {reports: seedReports(), user:null, points:0, ledger:[], contacts:[], powerSave:false, privacyOk:false};
-    saveDB();
-  }
+  DB = null;
+  try { const raw = localStorage.getItem(isLocal() ? DB_KEY : PREFS_KEY); if (raw) DB = JSON.parse(raw); } catch(e) { memOnly = true; }
+  const base = {reports:[], user:null, points:0, ledger:[], myReports:[], contacts:[], powerSave:false, privacyOk:false};
+  if (!isLocal()) { DB = Object.assign(base, DB || {}, {reports:[], user:null, points:0, ledger:[], myReports:[]}); return; }
+  if (!DB || !Array.isArray(DB.reports)) { DB = Object.assign(base, {reports: seedReports()}); saveDB(); }
+  DB.myReports = [];
 }
-function saveDB(){ if (memOnly) return; try { localStorage.setItem(DB_KEY, JSON.stringify(DB)); } catch(e) { memOnly = true; } }
+function saveDB(){
+  if (memOnly) return;
+  try {
+    if (isLocal()) localStorage.setItem(DB_KEY, JSON.stringify(DB));
+    else localStorage.setItem(PREFS_KEY, JSON.stringify({contacts:DB.contacts, powerSave:DB.powerSave, privacyOk:DB.privacyOk}));
+  } catch(e) { memOnly = true; }
+}
+// Ricarica dal backend segnalazioni, utente, punti e segnalazioni personali.
+async function reloadData(){
+  try {
+    DB.reports = await backend.loadReports();
+    loadError = null;
+  } catch(e) { DB.reports = []; loadError = e.message; }
+  DB.user = backend.user();
+  try {
+    const p = await backend.points(); DB.points = p.total; DB.ledger = p.ledger;
+    DB.myReports = await backend.myReports();
+  } catch(e) { DB.points = 0; DB.ledger = []; DB.myReports = []; }
+  loading = false;
+  refreshAll();
+}
 
 
 /* ================= INDICI ================= */
@@ -148,7 +174,7 @@ function renderFeed(){
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
     '<div class="muted" style="margin-top:4px">🚕 ' + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? ' · 📎 ' + r.attachments : '') + '</div></div>'
-  ).join('') : '<p class="muted">Nessuna segnalazione.</p>';
+  ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
 function initHome(){
   homeMap = makeMap('homeMap', [42.3, 12.6], 5);
@@ -263,19 +289,19 @@ function simulateRide(){
 }
 
 /* ================= RATING TASSISTA ================= */
-function doLookup(){
+async function doLookup(){
   const q = $('#lookupInput').value, n = normPlate(q), box = $('#lookupResult');
   if (!n) { box.innerHTML = ''; return; }
-  const reps = DB.reports.filter(r => r.verified && (normPlate(r.targa) === n || normPlate(r.licenza) === n));
-  if (reps.length < MIN_DRIVER_REPORTS) {
-    box.innerHTML = '<div class="note">Storico insufficiente: ' + reps.length + ' segnalazioni verificate (minimo ' + MIN_DRIVER_REPORTS + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
+  box.innerHTML = '<p class="muted">Verifico…</p>';
+  let d;
+  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">Verifica non disponibile: ' + esc(e.message) + '</div>'; return; }
+  if (!d.sufficient) {
+    box.innerHTML = '<div class="note">Storico insufficiente: ' + d.verified_count + ' segnalazioni verificate (minimo ' + d.min_required + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
   }
-  const avg = reps.reduce((a, r) => a + r.rating, 0)/reps.length;
-  const cnt = {}; reps.filter(r => r.type !== 'positiva').forEach(r => cnt[r.type] = (cnt[r.type] || 0) + 1);
-  const crit = Object.keys(cnt).map(k => TYPES[k] + ' ×' + cnt[k]).join(', ') || 'nessuna';
-  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b>🚕 ' + esc(maskPlate(q)) + '</b><span class="stars">' + stars(avg) + '</span></div>' +
-    '<div class="kv"><span>Rating medio</span><b>' + fmtNum(avg, 1) + ' / 5</b></div>' +
-    '<div class="kv"><span>Segnalazioni verificate</span><b>' + reps.length + '</b></div>' +
+  const crit = Object.keys(d.issues || {}).map(k => TYPES[k] + ' ×' + d.issues[k]).join(', ') || 'nessuna';
+  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b>🚕 ' + esc(maskPlate(q)) + '</b><span class="stars">' + stars(d.avg_rating) + '</span></div>' +
+    '<div class="kv"><span>Rating medio</span><b>' + fmtNum(d.avg_rating, 1) + ' / 5</b></div>' +
+    '<div class="kv"><span>Segnalazioni verificate</span><b>' + d.verified_count + '</b></div>' +
     '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>';
 }
 const rateState = {driver:0, ride:0};
@@ -295,19 +321,29 @@ function openRating(){
   $('#rateCost').value = ''; $('#rateComment').value = '';
   openModal('m-rate');
 }
-function submitRating(){
+async function submitRating(){
   if (!rateState.driver || !rateState.ride) return toast('Dai un voto al tassista e alla corsa');
-  const lr = lastRide || {}, rating = Math.round((rateState.driver + rateState.ride)/2);
-  let type = $('#rateIssue').value; if (type === 'positiva' && rating <= 2) type = 'altro';
-  const cost = parseFloat($('#rateCost').value);
- DB.reports.push({id:'r'+Date.now(), createdAt:Date.now(), city: lr.city || (lastPos ? nearestCity(lastPos).key : 'roma'),
-    licenza:'', targa: lr.plate || '', from:'', to:'', type, rating, driverRating:rateState.driver, rideRating:rateState.ride,
-    description: $('#rateComment').value.trim() || (type === 'positiva' ? 'Corsa valutata positivamente.' : 'Corsa valutata con criticità.'),
-    cost: isNaN(cost) ? null : cost, duration: lr.durMin || null, verified: !!DB.user, attachments:0, demo:false,
-    lat: lastPos ? lastPos.lat : null, lng: lastPos ? lastPos.lng : null});
-  const pts = award(POINTS.rideRating, 'Valutazione di fine corsa');
-  saveDB(); closeModal('m-rate'); refreshAll();
-  toast(DB.user ? 'Grazie! Valutazione registrata (+' + pts + ' punti)' : 'Grazie! Valutazione anonima: non concorre ai rating.');
+  const lr = lastRide || {}, cost = parseFloat($('#rateCost').value), pos = italianPosition(lastPos);
+  const plate = /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(lr.plate || '') ? lr.plate : null;
+  try {
+    const res = await backend.submitRideRating({city: lr.city || (lastPos ? nearestCity(lastPos).key : 'roma'),
+      driverRating:rateState.driver, rideRating:rateState.ride, type:$('#rateIssue').value, comment:$('#rateComment').value.trim(),
+      plate, cost: isNaN(cost) ? null : cost, duration: lr.durMin || null, lat:pos.lat, lng:pos.lng});
+    closeModal('m-rate'); await afterSubmit();
+    toast('Grazie! ' + sentMessage(res, 'Valutazione'));
+  } catch(e) { toast(e.message); }
+}
+
+// Messaggio dopo un invio: con Supabase la segnalazione passa dalla moderazione e i punti arrivano alla pubblicazione.
+function sentMessage(res, what){
+  if (res.pending) return res.verified
+    ? what + ' inviata ✅ Sarà pubblicata dopo la moderazione; i punti arrivano alla pubblicazione.'
+    : what + ' anonima inviata: in moderazione, non concorre ai rating.';
+  return res.verified ? what + ' inviata ✅ +' + res.points + ' punti' : what + ' anonima inviata: visibile, ma non concorre ai rating';
+}
+async function afterSubmit(){
+  if (!isLocal()) { try { DB.myReports = await backend.myReports(); } catch(e) {} }
+  refreshAll();
 }
 
 /* ================= SEGNALAZIONE ================= */
@@ -343,8 +379,10 @@ async function attachLocation(){
     const nc = nearestCity(p); if (nc.dist < 60 && !$('#reportCity').value) $('#reportCity').value = nc.key;
   } catch(e) { $('#reportLoc').textContent = 'Posizione non disponibile'; }
 }
-function submitReport(e){
+let submitting = false;
+async function submitReport(e){
   e.preventDefault();
+  if (submitting) return;
   const f = e.target, d = Object.fromEntries(new FormData(f).entries()), errs = [];
   if (!d.name || d.name.trim().length < 3) errs.push('nome e cognome');
   if (!d.licenza || !d.licenza.trim()) errs.push('licenza');
@@ -355,23 +393,25 @@ function submitReport(e){
   if (!d.description || d.description.trim().length < 20) errs.push('descrizione (min. 20 caratteri)');
   if (!d.consent) errs.push('dichiarazione e privacy');
   if (errs.length) return toast('Completa: ' + errs.join(', '));
-  const n = attachments.length;
- DB.reports.push({id:'r'+Date.now(), createdAt:Date.now(), city:d.city, licenza:d.licenza.trim(), targa:normPlate(d.targa),
-    from:(d.from || '').trim(), to:(d.to || '').trim(), type:d.type, rating:reportRating, description:d.description.trim(),
-    cost: d.cost ? parseFloat(d.cost) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
-    verified: !!DB.user, attachments:n, demo:false, status:'in_moderazione',
-    lat: reportGeo ? reportGeo.lat : null, lng: reportGeo ? reportGeo.lng : null});
-  let pts = award(POINTS.report, 'Segnalazione completa'); if (n) pts += award(POINTS.attachments, 'Allegati a supporto');
-  saveDB();
- attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
-  f.reset(); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
-  refreshAll(); openTab('home');
-  toast(DB.user ? 'Segnalazione inviata ✅ +' + pts + ' punti' : 'Segnalazione anonima inviata: visibile, ma non concorre ai rating');
+  // Allegati: il caricamento sul server arriva con il blocco 2c; per ora restano sul dispositivo.
+  const n = attachments.length, pos = italianPosition(reportGeo), btn = f.querySelector('button[type=submit]');
+  submitting = true; if (btn) btn.disabled = true;
+  try {
+    const res = await backend.submitReport({name:d.name.trim(), license:d.licenza, plate:normPlate(d.targa), city:d.city,
+      from:(d.from || '').trim(), to:(d.to || '').trim(), type:d.type, rating:reportRating, description:d.description.trim(),
+      cost: d.cost ? parseFloat(d.cost) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
+      attachments:n, lat:pos.lat, lng:pos.lng});
+    attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
+    f.reset(); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
+    await afterSubmit(); openTab('home');
+    toast(sentMessage(res, 'Segnalazione'));
+  } catch(err) { toast(err.message); }
+  finally { submitting = false; if (btn) btn.disabled = false; }
 }
 function updateAnonNotice(){
  $('#anonNotice').innerHTML = DB.user
-    ? '✅ Segnalazione verificata: concorre ai rating e vale punti.'
-    : '👤 Stai segnalando come ospite: la segnalazione sarà visibile ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
+    ? (isLocal() ? '✅ Segnalazione verificata: concorre ai rating e vale punti.' : '✅ Segnalazione verificata: dopo la moderazione concorre ai rating e vale punti.')
+    : '👤 Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la moderazione') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
   const i = document.querySelector('#reportForm [name=name]');
   if (DB.user && i && !i.value) i.value = DB.user.name;
 }
@@ -550,13 +590,12 @@ function sendShare(kind){
 }
 
 /* ================= PROFILO / PREMI / LOGIN ================= */
-function award(n, why){ if (!DB.user) return 0; DB.points += n; DB.ledger.unshift({ts:Date.now(), n, why}); DB.ledger = DB.ledger.slice(0, 30); return n; }
 async function redeem(i){
   const r = REWARDS[i];
   if (!DB.user) return toast('Accedi per riscattare i premi');
   if (DB.points < r.c) return toast('Ti mancano ' + (r.c - DB.points) + ' punti');
   if (await confirmDialog('Riscattare il premio?', r.n + ' per ' + fmtNum(r.c) + ' punti.', 'Riscatta')) {
-    DB.points -= r.c; DB.ledger.unshift({ts:Date.now(), n:-r.c, why:'Riscatto: ' + r.n}); saveDB(); renderProfile(); toast('Premio riscattato (simulato)');
+    try { await backend.redeem(r); renderProfile(); toast('Premio riscattato (simulato)'); } catch(e) { toast(e.message); }
   }
 }
 function renderProfile(){
@@ -564,8 +603,9 @@ function renderProfile(){
   const bat = battery ? Math.round(battery.level*100) + '%' + (battery.charging ? ' in carica' : '') : 'non rilevabile su questo dispositivo';
  $('#profileBox').innerHTML =
     '<div class="card">' + (u
-      ? '<h2>🙂 ' + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
+      ? '<h2>🙂 ' + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider === 'google' ? 'Google' : u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
       : '<h2>👤 Ospite</h2><p class="muted">Senza account puoi inviare valutazioni e usare l’SOS. Per far contare le segnalazioni nei rating e accumulare punti serve l’accesso.</p><button class="btn" style="margin-top:10px" onclick="openModal(\'m-login\')">Accedi o registrati</button>') + '</div>' +
+    myReportsCard() +
     '<div class="card"><h3>🎁 Punti e premi</h3><div class="thermo"><div class="val">' + fmtNum(DB.points) + '</div><div class="muted">Livello <b>' + lv.name + '</b>' + (lv.next ? ' · ' + (lv.next.min - DB.points) + ' punti a ' + lv.next.name : '') + '</div></div>' +
     '<div class="pbar"><span class="p"><i style="width:' + lv.pct + '%;background:var(--pri)"></i></span></div>' +
     '<div class="note">Stessi punti per segnalazioni positive e negative: +50 segnalazione completa, +20 con allegati, +10 valutazione di fine corsa. Si premia la partecipazione, non il giudizio espresso.</div>' +
@@ -580,7 +620,15 @@ function renderProfile(){
     '<div class="note">In risparmio: GPS a bassa precisione, nome via aggiornato ogni 60 secondi invece di 20, animazioni disattivate. Si attiva da solo sotto il 20% se il browser espone il livello batteria (Safari su iPhone non lo espone).</div></div>' +
     '<div class="card"><h3>📦 Dati aperti</h3><p class="muted">Dataset anonimizzato: niente nomi, targhe o licenze; coordinate arrotondate a circa 1 km. In produzione lo stesso formato è servito via API REST e SFTP ai soggetti accreditati.</p>' +
     '<div class="row" style="margin-top:8px"><button class="btn sec" onclick="exportData(\'json\')">JSON</button><button class="btn sec" onclick="exportData(\'csv\')">CSV</button></div></div>' +
-    '<div class="card"><h3>🔒 Privacy</h3><button class="btn sec" onclick="openModal(\'m-privacy\')">Leggi l’informativa</button><button class="btn sec" style="margin-top:8px" onclick="resetDemo()">Ripristina dati demo</button></div>';
+    '<div class="card"><h3>🔒 Privacy</h3><button class="btn sec" onclick="openModal(\'m-privacy\')">Leggi l’informativa</button>' + (isLocal() ? '<button class="btn sec" style="margin-top:8px" onclick="resetDemo()">Ripristina dati demo</button>' : '') + '</div>';
+}
+function myReportsCard(){
+  if (!DB.myReports.length) return '';
+  return '<div class="card"><h3>📝 Le tue segnalazioni</h3>' + DB.myReports.slice(0, 10).map(r =>
+    '<div class="kv"><span>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + ' · ' + ago(Date.parse(r.created_at)) +
+    (r.rejection_reason ? '<br><span class="muted">Motivo: ' + esc(r.rejection_reason) + '</span>' : '') + '</span>' +
+    '<span class="badge' + (r.status === 'pubblicata' ? ' b-ok' : '') + '">' + (STATUS_LABELS[r.status] || r.status) + '</span></div>').join('') +
+    '<div class="note">Ogni segnalazione è pubblicata solo dopo la revisione di un moderatore.' + (DB.user ? '' : ' Senza account le segnalazioni restano legate a questo dispositivo.') + '</div></div>';
 }
 function addContact(){
   const n = $('#cName').value.trim(), p = $('#cPhone').value.trim();
@@ -588,15 +636,44 @@ function addContact(){
  DB.contacts.push({name:n, phone:p}); saveDB(); renderProfile();
 }
 function removeContact(i){ DB.contacts.splice(i, 1); saveDB(); renderProfile(); }
-function emailLogin(){
+function loginFields(){
   const em = $('#loginEmail').value.trim(), pw = $('#loginPwd').value;
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return toast('Email non valida');
-  if (pw.length < 8) return toast('Password: minimo 8 caratteri');
-  DB.user = {name: em.split('@')[0], email: em, provider:'email'}; afterLogin();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('Email non valida'); return null; }
+  if (pw.length < 8) { toast('Password: minimo 8 caratteri'); return null; }
+  return {em, pw};
 }
-function ssoLogin(p){ DB.user = {name:'Utente ' + p, email:'', provider:p}; afterLogin(); }
-function afterLogin(){ saveDB(); closeModal('m-login'); $('#loginPwd').value = ''; refreshAll(); toast('Accesso effettuato (simulato)'); }
-function logout(){ DB.user = null; saveDB(); refreshAll(); }
+async function emailLogin(){
+  const v = loginFields(); if (!v) return;
+  try { await backend.signIn(v.em, v.pw); await afterLogin(); } catch(e) { toast(e.message); }
+}
+async function emailSignup(){
+  const v = loginFields(); if (!v) return;
+  try {
+    const r = await backend.signUp(v.em, v.pw);
+    if (r.needsConfirmation) { $('#loginPwd').value = ''; $('#loginNote').textContent = '📧 Ti abbiamo inviato un\'email a ' + v.em + ': apri il link per confermare l\'account.'; toast('Controlla la tua email per confermare'); return; }
+    await afterLogin();
+  } catch(e) { toast(e.message); }
+}
+async function googleLogin(){
+  try { await backend.signInGoogle(); if (isLocal()) await afterLogin(); } catch(e) { toast(e.message); }
+}
+async function forgotPassword(){
+  const em = $('#loginEmail').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return toast('Scrivi prima la tua email');
+  try { await backend.resetPassword(em); $('#loginNote').textContent = '📧 Se esiste un account per ' + em + ', riceverai un link per scegliere una nuova password.'; } catch(e) { toast(e.message); }
+}
+async function saveNewPassword(){
+  const pw = $('#newPwd').value;
+  if (pw.length < 8) return toast('Password: minimo 8 caratteri');
+  try { await backend.updatePassword(pw); $('#newPwd').value = ''; closeModal('m-newpwd'); toast('Password aggiornata ✅'); } catch(e) { toast(e.message); }
+}
+async function afterLogin(){ closeModal('m-login'); $('#loginPwd').value = ''; await reloadData(); toast(isLocal() ? 'Accesso effettuato (simulato)' : 'Accesso effettuato'); }
+async function logout(){ await backend.signOut(); await reloadData(); }
+// Eventi di Supabase Auth: accesso dopo conferma email o Google, uscita, recupero password.
+function onAuthChange(event){
+  if (event === 'PASSWORD_RECOVERY') { openModal('m-newpwd'); return; }
+  if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') reloadData();
+}
 function exportData(fmt){
   const rows = toOpenDataRows(DB.reports);
   if (!rows.length) return toast('Nessun dato da esportare');
@@ -613,7 +690,7 @@ function exportData(fmt){
 async function resetDemo(){
   if (await confirmDialog('Ripristinare i dati demo?', 'Cancella segnalazioni, punti e contatti salvati su questo dispositivo.', 'Ripristina')) {
     try { localStorage.removeItem(DB_KEY); } catch(e) {}
-    DB = null; loadDB(); refreshAll(); toast('Dati demo ripristinati');
+    loadDB(); await reloadData(); toast('Dati demo ripristinati');
   }
 }
 
@@ -635,8 +712,12 @@ function refreshAll(){
 }
 const _renderCityStats = renderCityStats;
 renderCityStats = function(k){ $('#cityStats').dataset.city = k; _renderCityStats(k); };
-function init(){
+async function init(){
+  backend = await createBackend(() => DB, saveDB);
   loadDB(); initBattery(); initReportForm(); initBook(); renderNews();
+  $('#loginNote').textContent = isLocal()
+    ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
+    : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating.';
  $('#cityList').innerHTML = Object.values(CITIES).map(c => '<option value="' + c.n + '">').join('');
  $('#citySearch').addEventListener('change', searchCity);
  $('#shareText').addEventListener('input', () => { shareEdited = true; });
@@ -644,9 +725,11 @@ function init(){
   refreshAll();
   initHome();
   if (!DB.privacyOk) openModal('m-privacy');
+  await backend.init(onAuthChange);
+  await reloadData();
 }
 document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, exportData, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, setPowerSave, simulateRide, ssoLogin, submitRating, submitReport, toggleRide});
+Object.assign(window, {acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

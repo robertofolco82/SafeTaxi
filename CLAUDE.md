@@ -10,12 +10,13 @@ Si sostiene con pubblicità non invasiva.
   - `index.html`: markup. `src/app.js`: interfaccia (DOM, mappe, stato). `src/lib/`: regole pure, senza DOM.
   - Le funzioni richiamate da `onclick`/`onchange`/`onsubmit` sono esposte su `window` in fondo a `src/app.js`: se ne aggiungi una, registrala lì.
   - Mappe con Leaflet (dipendenza npm) + tile OpenStreetMap, ricerca indirizzi con Nominatim.
-  - Dati salvati in localStorage: l'app non usa ancora il backend (collegamento nel blocco 2b).
+  - Dati e accesso tramite `src/backend/`: `supabase.js` (predefinito, configurato in `.env`) o `local.js` (demo nel browser, `VITE_BACKEND=locale`). Nel browser restano solo le preferenze.
+  - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
 - Backend Supabase, progetto di sviluppo `SafeTaxi` (ref `emgookqbvrehcroxpypx`, Francoforte, piano Free) con schema e dati DEMO.
   - Schema in `supabase/migrations/`, seed DEMO in `supabase/seed.sql` (generato da `scripts/generate-seed.mjs`), test pgTAP in `supabase/tests/`.
   - Ogni modifica allo schema: nuova migrazione nel repo, test `npm run test:db` in locale, poi applicazione al progetto remoto.
   - Dati personali (nome segnalatore, targa, licenza) solo in `private.reports_private`. Scritture dei client solo tramite funzioni (`submit_report`, `submit_ride_rating`).
-- Test: `npm test` (Vitest, regole in `src/lib`) e `npm run test:e2e` (Playwright, flussi principali, rete esterna simulata). La CI su GitHub Actions li esegue a ogni push e pull request.
+- Test: `npm test` (Vitest, regole in `src/lib`), `npm run test:e2e` (Playwright: progetto `demo` senza backend e `supabase` contro lo stack locale, con registrazione ed email via Mailpit) e `npm run test:db` (pgTAP). La CI su GitHub Actions li esegue a ogni push e pull request.
 - Prima di consegnare una modifica: `npm test`, `npm run build`, `npm run test:e2e` e, se tocchi il database, `npm run test:db` devono passare.
 - Tutti i dati sono DEMO: segnalazioni generate con seed fisso, licenze/domanda/tariffe per città, rating delle cooperative. Le news sono segnaposto.
 
@@ -78,7 +79,7 @@ Si sostiene con pubblicità non invasiva.
 2. Backend Supabase (a blocchi, una pull request per blocco)
    - ✅ 2a. Schema (profiles, reports + private.reports_private, attachments, driver_stats, cities, coops, points_ledger, news), regole di accesso RLS, limiti anti-fake, moderazione e punti lato database.
    - Storage degli allegati con rimozione dei metadati EXIF e sfocatura di volti e targhe.
-   - Autenticazione email/password, Google e anonima (Apple e Facebook rinviati).
+   - ✅ 2b. Autenticazione email/password con conferma, Google e anonima (Apple e Facebook rinviati); app collegata al database.
    - Moderazione: all'inizio dal pannello Supabase, poi pagina "Moderazione" nell'app riservata ai moderatori.
    - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
    - API ed export SFTP: rinviati.

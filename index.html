@@ -234,14 +234,19 @@
 <!-- MODALE LOGIN -->
 <div class="modal" id="m-login"><div class="sheet">
   <h2>👤 Accedi <button class="x" onclick="closeModal('m-login')">✕</button></h2>
-  <p class="muted" style="margin-bottom:12px">Solo gli utenti registrati contribuiscono ai rating e accumulano punti. Senza account puoi inviare valutazioni e usare l'SOS.</p>
-  <button class="opt" onclick="ssoLogin('Apple')"><div class="ic" style="background:#000;color:#fff">🍎</div><div><b>Continua con Apple</b></div></button>
-  <button class="opt" onclick="ssoLogin('Google')"><div class="ic" style="background:#f1f5f9;font-weight:800">G</div><div><b>Continua con Google</b></div></button>
-  <button class="opt" onclick="ssoLogin('Facebook')"><div class="ic" style="background:#1877f2;color:#fff;font-weight:800">f</div><div><b>Continua con Facebook</b></div></button>
+  <p class="muted" style="margin-bottom:12px">Solo gli utenti registrati con email confermata contribuiscono ai rating e accumulano punti. Senza account puoi inviare valutazioni e usare l'SOS.</p>
+  <button class="opt" onclick="googleLogin()"><div class="ic" style="background:#f1f5f9;font-weight:800">G</div><div><b>Continua con Google</b></div></button>
   <label class="f">Email</label><input id="loginEmail" type="email" autocomplete="email">
   <label class="f">Password (min. 8 caratteri)</label><input id="loginPwd" type="password" autocomplete="current-password">
-  <button class="btn" style="margin-top:12px" onclick="emailLogin()">Accedi / Registrati</button>
-  <div class="note">Prototipo: autenticazione simulata sul dispositivo, la password non viene salvata. In produzione: Supabase Auth o Firebase Auth.</div>
+  <div class="row" style="margin-top:12px"><button class="btn" onclick="emailLogin()">Accedi</button><button class="btn sec" onclick="emailSignup()">Crea account</button></div>
+  <button class="btn sec sm" style="margin-top:8px" onclick="forgotPassword()">Password dimenticata?</button>
+  <div class="note" id="loginNote"></div>
+</div></div>
+
+<div class="modal" id="m-newpwd"><div class="sheet">
+  <h2>🔑 Nuova password <button class="x" onclick="closeModal('m-newpwd')">✕</button></h2>
+  <label class="f">Nuova password (min. 8 caratteri)</label><input id="newPwd" type="password" autocomplete="new-password">
+  <button class="btn" style="margin-top:12px" onclick="saveNewPassword()">Salva password</button>
 </div></div>
 
 <!-- MODALE PRIVACY -->
