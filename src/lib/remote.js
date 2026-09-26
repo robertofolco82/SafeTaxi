@@ -1,14 +1,14 @@
 /* Conversioni tra i dati del database Supabase e il formato usato dall'interfaccia. */
 
 // Colonne pubbliche di public.reports (le altre non sono leggibili dai client).
-export const PUBLIC_REPORT_COLUMNS = 'id,kind,city_key,type,rating,description,from_place,to_place,cost_eur,duration_min,lat_approx,lng_approx,plate_masked,verified,is_demo,created_at';
+export const PUBLIC_REPORT_COLUMNS = 'id,kind,city_key,type,rating,description,from_place,to_place,cost_eur,duration_min,lat_approx,lng_approx,plate_masked,verified,ride_verified,is_demo,created_at';
 
 const num = v => v == null ? null : Number(v);
 
 export function fromDbReport(r){
   return {id:r.id, kind:r.kind, createdAt:Date.parse(r.created_at), city:r.city_key, type:r.type, rating:r.rating,
     description:r.description, from:r.from_place || '', to:r.to_place || '', cost:num(r.cost_eur), duration:r.duration_min,
-    verified:r.verified, attachments:0, demo:r.is_demo, lat:num(r.lat_approx), lng:num(r.lng_approx),
+    verified:r.verified, rideVerified:!!r.ride_verified, attachments:0, demo:r.is_demo, lat:num(r.lat_approx), lng:num(r.lng_approx),
     targa:r.plate_masked || '', licenza:''};
 }
 

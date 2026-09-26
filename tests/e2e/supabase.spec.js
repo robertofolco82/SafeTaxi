@@ -415,3 +415,56 @@ test('cancellazione dell\'account dal sito: dati personali e contenuti non pubbl
   // Con le vecchie credenziali non si entra più.
   expect((await createClient(API, PUBLISHABLE, {auth: {persistSession: false}}).auth.signInWithPassword({email, password})).error).not.toBeNull();
 });
+
+test('corsa verificata: la corsa registrata dal GPS dà il bollino alla valutazione, il server tiene solo durata e km', async ({page, context}) => {
+  test.setTimeout(120000);
+  const stamp = Date.now(), email = `corsa.${stamp}@example.com`, password = 'password-corsa-1';
+  await fetch(`${API}/auth/v1/admin/users`, {method: 'POST', headers: serviceHeaders(), body: JSON.stringify({email, password, email_confirm: true})});
+  await page.locator('#profileBtn').click();
+  await page.getByRole('button', {name: 'Accedi o registrati'}).click();
+  await page.fill('#loginEmail', email);
+  await page.fill('#loginPwd', password);
+  await page.locator('#m-login').getByRole('button', {name: 'Accedi', exact: true}).click();
+  await expect(page.locator('#profileBox')).toContainText(email);
+
+  // Corsa vera (GPS del browser simulato da Playwright), con la targa indicata prima di partire.
+  await page.getByRole('button', {name: /Corsa/}).click();
+  await page.fill('#lookupInput', 'AB123CD');
+  await page.locator('#rideBtn').click();
+  await expect(page.locator('#rideVerify')).toContainText('Corsa registrata per il bollino');
+  const ride = async () => (await rest('rides?select=id,pings,distance_m,last_lat,report_id&order=started_at.desc&limit=1'))[0];
+  await expect.poll(async () => (await ride()).pings, {timeout: 15000}).toBe(1);
+  for (const lat of [41.9036, 41.9063]) {
+    await page.waitForTimeout(6500);
+    await context.setGeolocation({latitude: lat, longitude: 12.5010});
+  }
+  await expect.poll(async () => (await ride()).pings, {timeout: 15000}).toBe(3);
+  const during = await ride();
+  expect(during.distance_m).toBeGreaterThan(550);
+  expect(during.last_lat).toBeCloseTo(41.9063, 4);
+  // Il test non può durare 3 minuti: la partenza si sposta indietro come farebbe il tempo trascorso.
+  await rest(`rides?id=eq.${during.id}`, {method: 'PATCH', body: JSON.stringify({started_at: new Date(Date.now() - 10 * 60000).toISOString()}), headers: {Prefer: 'return=minimal'}});
+
+  await page.locator('#rideBtn').click();
+  await expect(page.locator('#rateVerify')).toContainText('Corsa verificata');
+  await page.locator('#rateDriver span').nth(4).click();
+  await page.locator('#rateRide span').nth(4).click();
+  const comment = `Corsa verificata ${stamp}: autista puntuale e percorso corretto.`;
+  await page.fill('#rateComment', comment);
+  await page.getByRole('button', {name: 'Invia valutazione'}).click();
+  await expect(page.locator('#toast')).toContainText('Valutazione inviata');
+
+  const [report] = await rest(`reports?description=eq.${encodeURIComponent(comment)}&select=id,ride_verified`);
+  expect(report.ride_verified).toBe(true);
+  const [after] = await rest(`rides?id=eq.${during.id}&select=report_id,last_lat`);
+  expect(after.report_id).toBe(report.id);
+  expect(after.last_lat).toBeNull();
+
+  // Dopo la moderazione il bollino è nel feed; la pagina spiega come verifichiamo le recensioni.
+  await moderate(comment, 'pubblicata');
+  await page.reload();
+  const item = page.locator('.feed-item', {hasText: comment});
+  await expect(item.locator('.badge', {hasText: 'corsa verificata'})).toBeVisible();
+  await page.getByRole('button', {name: 'Come verifichiamo le recensioni'}).first().click();
+  await expect(page.locator('#m-verifica')).toContainText('almeno 3 minuti e 500 metri');
+});

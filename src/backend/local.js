@@ -42,6 +42,7 @@ export function createLocalBackend(getState, save){
     async updatePassword(){},
     async signOut(){ getState().user = null; save(); },
     async role(){ return 'utente'; },
+    async startRide(){ return null; },
     hasSession: () => !!getState().user,
     async deleteAccount(){ const s = getState(); s.user = null; s.points = 0; s.ledger = []; save(); },
     async startLiveShare(){ throw new Error('La condivisione in tempo reale richiede il backend Supabase.'); },

@@ -62,6 +62,7 @@
           <button class="chip" data-feed="neg" onclick="setFeedFilter('neg')"><span data-icon="thumbs-down" data-icon-size="13"></span>Negative</button>
         </div>
         <div id="feed"></div>
+        <button class="linkbtn" onclick="openModal('m-verifica')">Come verifichiamo le recensioni</button>
       </div>
     </section>
 
@@ -90,6 +91,7 @@
           <div class="stat"><b id="rideCost">—</b><span>Stima costo</span></div>
         </div>
         <button class="btn" id="rideBtn" style="margin-top:12px" onclick="toggleRide()"><span data-icon="play" data-icon-size="16"></span>Inizia corsa</button>
+        <div id="rideVerify" class="muted" style="margin-top:6px"></div>
         <div class="row" style="margin-top:8px">
           <button class="btn sec" onclick="openShare(false)"><span data-icon="send" data-icon-size="15"></span>Condividi posizione</button>
           <button class="btn red" onclick="openSOS()"><span data-icon="siren" data-icon-size="15"></span>SOS</button>
@@ -106,6 +108,8 @@
       <form class="card" id="reportForm" onsubmit="submitReport(event)" novalidate>
         <h2><span data-icon="file-text" data-icon-size="18"></span>Nuova segnalazione</h2>
         <div id="anonNotice" class="note" style="margin-top:0"></div>
+        <div id="reportRide" class="note hidden"></div>
+        <button type="button" class="linkbtn" onclick="openModal('m-verifica')">Come verifichiamo le recensioni</button>
         <label class="f">Nome e cognome <span class="req">*</span></label>
         <input name="name" autocomplete="name">
         <div class="row">
@@ -246,6 +250,7 @@
 <!-- MODALE VALUTAZIONE FINE CORSA -->
 <div class="modal" id="m-rate"><div class="sheet">
   <h2><span data-icon="star" data-icon-size="18"></span>Com'è andata? <button class="x" onclick="closeModal('m-rate')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
+  <div id="rateVerify" class="note hidden" style="margin-top:0"></div>
   <label class="f">Tassista (cortesia, guida)</label><div class="starpick" id="rateDriver"></div>
   <label class="f">Corsa (percorso, prezzo, veicolo)</label><div class="starpick" id="rateRide"></div>
   <label class="f">Qualcosa non è andato?</label><select id="rateIssue"></select>
@@ -296,13 +301,29 @@
   <button class="btn" style="margin-top:12px" onclick="sendReply()">Invia replica</button>
 </div></div>
 
+<!-- COME VERIFICHIAMO LE RECENSIONI (informazioni richieste dal Codice del consumo, art. 22, come modificato dal D.Lgs. 26/2023) -->
+<div class="modal" id="m-verifica"><div class="sheet">
+  <h2><span data-icon="shield-check" data-icon-size="18"></span>Come verifichiamo le recensioni <button class="x" onclick="closeModal('m-verifica')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
+  <div style="font-size:14px;line-height:1.5">
+    <p style="margin-bottom:8px"><b>Chi può scrivere.</b> Chiunque, anche senza account. Nel rating dei tassisti e nel Termometro contano però solo le segnalazioni <b>verificate</b>: scritte da un account con email confermata. Quelle senza account compaiono come "anonima" e non incidono sui rating.</p>
+    <p style="margin-bottom:8px"><b>Moderazione prima della pubblicazione.</b> Ogni segnalazione e valutazione viene letta da un moderatore prima di essere pubblicata. Rifiutiamo contenuti offensivi, non pertinenti o con dati personali di terzi, con gli stessi criteri per recensioni positive e negative; il motivo del rifiuto è comunicato all'autore. Nelle foto i volti sono sfocati in automatico e le targhe dal moderatore.</p>
+    <p style="margin-bottom:8px"><b>Bollino "corsa verificata".</b> Indica che l'autore ha registrato la corsa con l'app: almeno 3 minuti e 500 metri, con velocità plausibili, e segnalazione inviata entro 24 ore dalla fine della corsa (una sola per corsa). Se all'inizio della corsa è stata indicata la targa, deve coincidere con quella segnalata. Il bollino conferma che una corsa c'è stata, non chi era a bordo, e non esclude del tutto la falsificazione del GPS.</p>
+    <p style="margin-bottom:8px"><b>Limiti contro gli abusi.</b> Al massimo 5 segnalazioni e 10 valutazioni di fine corsa ogni 24 ore per account; la stessa targa si può segnalare una volta ogni 30 giorni.</p>
+    <p style="margin-bottom:8px"><b>Nessun incentivo sul giudizio.</b> I punti premiano la partecipazione, non il giudizio: segnalazioni positive e negative valgono gli stessi punti, assegnati solo dopo la pubblicazione. Non accettiamo pagamenti per pubblicare, modificare o togliere una recensione.</p>
+    <p style="margin-bottom:8px"><b>Come si calcolano i rating.</b> Il rating di un singolo tassista è visibile solo con almeno 5 segnalazioni verificate. Nel Termometro il peso di ogni segnalazione si dimezza ogni 90 giorni. Il bollo RECOMMENDED richiede un rating di almeno 4,0 e almeno 20 recensioni verificate negli ultimi 12 mesi.</p>
+    <p style="margin-bottom:8px"><b>Diritto di replica.</b> Il tassista può rispondere a una segnalazione pubblicata; la replica è pubblicata dopo la verifica del moderatore.</p>
+    <p class="muted">In questa versione di prova parte delle segnalazioni e i rating delle cooperative sono dati DEMO.</p>
+  </div>
+  <button class="btn" style="margin-top:12px" onclick="closeModal('m-verifica')">Ho capito</button>
+</div></div>
+
 <div class="modal" id="m-privacy"><div class="sheet">
   <h2><span data-icon="lock" data-icon-size="18"></span>Privacy in breve <button class="x" onclick="closeModal('m-privacy')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <div style="font-size:14px;line-height:1.5">
     <p style="margin-bottom:8px"><b>Cosa raccogliamo.</b> I dati della segnalazione (nome, targa, licenza, città, descrizione, allegati) e la posizione solo quando la richiedi tu.</p>
     <p style="margin-bottom:8px"><b>Cosa è pubblico.</b> Nel feed la targa è mascherata e il tuo nome non compare. Il rating di un singolo tassista è visibile solo con almeno 5 segnalazioni verificate.</p>
     <p style="margin-bottom:8px"><b>Tutela del tassista.</b> Le segnalazioni sono moderate prima di concorrere ai rating; il tassista può chiedere rettifica e replicare.</p>
-    <p style="margin-bottom:8px"><b>Posizione.</b> Usata per SOS, corsa e segnalazione. Il percorso della corsa resta sul dispositivo.</p>
+    <p style="margin-bottom:8px"><b>Posizione.</b> Usata per SOS, corsa e segnalazione, solo quando la chiedi tu. Il percorso della corsa non viene salvato sul server: con un account verificato, durante la corsa l'app invia la posizione per il bollino "corsa verificata", ma il server tiene solo durata e km (e l'ultimo punto fino alla fine della corsa). Con la condivisione in tempo reale le posizioni restano visibili a chi ha il link fino alla fine della corsa, poi vengono cancellate.</p>
     <p style="margin-bottom:8px"><b>Condivisione con terzi.</b> Solo dati aggregati o anonimizzati, con accordo di condivisione.</p>
     <p style="margin-bottom:8px"><b>Diritti.</b> Accesso, rettifica, cancellazione, opposizione (artt. 15–22 GDPR). Titolare e DPO: da definire.</p>
     <p class="muted">Sintesi da validare con il DPO prima della pubblicazione.</p>

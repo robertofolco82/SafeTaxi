@@ -13,7 +13,7 @@
 | Informazioni di contatto → Nome | Nome e cognome del segnalatore | Funzionalità dell'app |
 | Informazioni di contatto → Email | Email dell'account (facoltativo) | Funzionalità dell'app |
 | Informazioni di contatto → Altro | Contatto del tassista che replica | Funzionalità dell'app |
-| Posizione → Posizione precisa | Segnalazioni (facoltativo), condivisione live della corsa | Funzionalità dell'app |
+| Posizione → Posizione precisa | Segnalazioni (facoltativo), condivisione live della corsa, verifica della corsa (solo account verificati: il server tiene solo durata e km) | Funzionalità dell'app |
 | Contenuti utente → Foto o video | Allegati | Funzionalità dell'app |
 | Contenuti utente → Dati audio | Allegati | Funzionalità dell'app |
 | Contenuti utente → Altri contenuti | Testo di segnalazioni, valutazioni e repliche | Funzionalità dell'app |

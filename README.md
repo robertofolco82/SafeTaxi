@@ -99,7 +99,13 @@ Bozze delle dichiarazioni per gli store: `docs/store/`.
 
 ### Tracking live
 
-Scheda **Corsa → 🔴 Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
+Scheda **Corsa → Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
+
+### Corsa verificata e recensioni (Omnibus)
+
+Con un account con email confermata, **Inizia corsa** registra la corsa anche sul server (`start_ride`, `ride_ping`, `end_ride`): il server somma i km e controlla le velocità, ma conserva solo l'ultimo punto (cancellato a fine corsa), mai il percorso. La corsa vale il bollino **corsa verificata** se dura almeno 3 minuti, copre almeno 500 m con almeno 3 posizioni e nessun salto oltre 200 km/h. La segnalazione o valutazione va inviata entro 24 ore dalla fine, una sola per corsa, e se all'inizio era stata indicata la targa deve coincidere (`submit_report` / `submit_ride_rating` con `p_ride_id`). Le corse si cancellano dopo 7 giorni. La corsa simulata non vale mai il bollino.
+
+La pagina **Come verifichiamo le recensioni** (link sotto il feed e nel modulo di segnalazione) spiega verifica, moderazione, limiti anti-abuso, punti e calcolo dei rating, come richiesto dal Codice del consumo (art. 22, modificato dal D.Lgs. 26/2023). Il testo è in `index.html` (`#m-verifica`): se cambiano le regole nel database, va aggiornato anche lì.
 
 ### Moderare dall'app
 
