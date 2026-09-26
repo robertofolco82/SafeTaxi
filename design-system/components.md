@@ -18,11 +18,18 @@ Ogni bottone con un'icona: icona a sinistra del testo, mai da sola salvo bottoni
 
 ## Badge
 
-- `.badge` — badge neutro (stato, contatore).
-- `.badge.b-ok` — verde, "verificata/pubblicata".
-- `.badge.b-demo` — viola, dati DEMO/segnaposto (obbligatorio su ogni dato non reale).
-- `.badge.verified` — badge di fiducia con icona `shield-check`, sfondo `--st-accent-100`,
-  testo `--st-accent-700`. Solo per segnalazioni/tassisti verificati, mai altrove.
+Mai un badge "a pillola" con sfondo pastello e testo colorato (il classico badge da
+UI generata automaticamente): qui un badge è un piccolo tag **con solo contorno**,
+maiuscolo, letter-spacing, con un puntino dello stesso colore del testo — mai un
+riempimento colorato. L'unica eccezione è `.rec`, l'unico badge a **sfondo pieno**
+di tutta l'app: proprio perché è pieno, resta un segno raro e riconoscibile.
+
+- `.badge` — tag neutro (stato, contatore): contorno `--st-border-strong`, testo `--mut`.
+- `.badge.b-ok` — contorno e testo `--st-accent`: "verificata/pubblicata".
+- `.badge.b-demo` — come `.badge`, ma senza il puntino: dati DEMO/segnaposto
+  (obbligatorio su ogni dato non reale).
+- `.rec` — l'unico badge pieno: sfondo `--st-primary`, testo bianco, icona `trophy`.
+  Solo per il bollo RECOMMENDED, mai altrove.
 
 ## Chip
 
@@ -36,6 +43,13 @@ Ogni bottone con un'icona: icona a sinistra del testo, mai da sola salvo bottoni
 - `.card` — contenitore base: sfondo `--st-surface`, `--st-radius-lg`, `--st-shadow-card`.
 - Titolo di sezione dentro una card: icona 16–18px + testo, stesso font `--st-font-display`,
   peso 700. L'icona non sostituisce mai il testo, lo precede.
+
+## Nota informativa (`.note`)
+
+Box neutro (sfondo `--st-bg`, nessun bordo colorato, nessuna barra laterale) per testo
+secondario/legale dentro una card o una modale. **Niente bordo colorato a sinistra +
+sfondo pastello**: è lo stile tipico dei callout generati automaticamente ed è la prima
+cosa che rende un'interfaccia riconoscibile come "fatta con un assistente AI".
 
 ## Icone nella tab bar e nell'header
 

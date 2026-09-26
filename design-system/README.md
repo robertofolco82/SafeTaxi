@@ -75,3 +75,10 @@ originale di Lucide (2px): non modificarlo icona per icona, per restare coerenti
 - Non creare una nuova variante di bottone senza prima controllare `components.md`.
 - Non hardcodare colori in `src/app.js` o `src/styles.css`: aggiungere un token in `tokens.css`
   se manca quello che serve.
+- **Non usare box con bordo colorato a sinistra + sfondo pastello, badge "a pillola" con
+  riempimento colorato, o gradienti su badge/chip.** È lo stile di default di ogni UI generata
+  automaticamente (callout, badge verdi/viola pastello) ed è la prima cosa che rende
+  un'interfaccia riconoscibile come "fatta con un assistente AI" invece che da un prodotto
+  curato. Regola pratica: colore = contorno + testo (badge) o icona colorata, mai un intero
+  riempimento pastello. Unica eccezione consapevole: `.rec` (RECOMMENDED), l'unico badge a
+  sfondo pieno di tutta l'app — resta un segno raro proprio perché è l'unico.

@@ -189,7 +189,7 @@ function renderFeed(){
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
     '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
-    (r.verified ? '<span class="badge b-ok">' + icon('shield-check', {size:11}) + 'verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
+    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') + '</div>'
   ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
@@ -553,7 +553,7 @@ function coopCard(x, priority){
   const action = x.tel
     ? '<button class="btn sm" data-tel="' + x.tel + '" data-name="' + esc(x.n) + '" onclick="callNumber(this.dataset.tel, this.dataset.name)">' + icon('phone-call', {size:14}) + fmtTel(x.tel) + '</button>'
     : '<button class="btn sm" onclick="openStore(\'' + x.store + '\')">' + icon('smartphone', {size:14}) + 'Apri o scarica</button>';
-  return '<div class="card" style="' + (rec ? 'border:2px solid ' + 'var(--acc)' + ';background:#FFFCEF' : '') + '">' +
+  return '<div class="card" style="' + (rec ? 'border:1.5px solid var(--pri)' : '') + '">' +
     '<div class="row between"><b>' + esc(x.n) + (priority ? ' <span class="badge b-ok">Priorità</span>' : '') + '</b>' + (rec ? '<span class="badge rec">' + icon('trophy', {size:12}) + 'RECOMMENDED</span>' : '') + '</div>' +
     '<div style="margin:6px 0;font-size:13px;display:flex;align-items:center;gap:4px">' + st + '</div>' + ext +
     '<div class="chips" style="margin:6px 0">' + (x.f || []).map(f => '<span class="badge">' + (FILTER_ICONS[f] ? icon(FILTER_ICONS[f], {size:11}) : '') + (FILTERS[f] || f) + '</span>').join('') + '</div>' +
