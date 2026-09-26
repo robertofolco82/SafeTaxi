@@ -144,7 +144,7 @@ La funzione non richiede chiavi (`verify_jwt = false`): il database accetta al m
 
 ```sql
 create extension if not exists pg_cron;
-create extension if not exists pg_net;
+create extension if not exists pg_net with schema extensions;
 select cron.schedule('refresh-news', '7 * * * *', $$
   select net.http_post(url := 'https://emgookqbvrehcroxpypx.supabase.co/functions/v1/refresh-news',
     headers := '{"Content-Type": "application/json"}'::jsonb, body := '{}'::jsonb)

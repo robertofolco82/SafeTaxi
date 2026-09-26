@@ -119,6 +119,7 @@ Si sostiene con pubblicità non invasiva.
 ## Modo di lavorare
 - Autonomia: si procede da un blocco al successivo della roadmap senza chiedere conferma. Le scelte tecniche con una soluzione ragionevole si prendono e si dichiarano nel riepilogo e nella pull request.
 - Si chiede prima di procedere solo per: costi (piani a pagamento, servizi nuovi), azioni irreversibili o su dati reali/produzione, credenziali e segreti, testi legali, pubblicazione sugli store, e le voci in "Decisioni aperte".
+- Supabase: migrazioni, funzioni, SQL, estensioni, job pianificati e impostazioni del progetto si eseguono senza chiedere autorizzazione (deciso da Roberto). Resta da chiedere solo il passaggio a piani a pagamento.
 - Prima di scrivere codice, raccogliere i dettagli; fare domande mirate solo quando la risposta cambia davvero il lavoro.
 - Comunicazione diretta e critica; dire chiaramente cosa non è possibile.
 - Modifiche incrementali verificate eseguendo il codice. Niente riscritture totali non richieste.
