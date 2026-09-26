@@ -68,6 +68,7 @@ import undoTwo from 'lucide-static/icons/undo-2.svg?raw';
 import trashTwo from 'lucide-static/icons/trash-2.svg?raw';
 import refreshCw from 'lucide-static/icons/refresh-cw.svg?raw';
 import eye from 'lucide-static/icons/eye.svg?raw';
+import flag from 'lucide-static/icons/flag.svg?raw';
 
 const ICONS = {
   'shield-check': shieldCheck, newspaper, user, 'user-round-check': userRoundCheck,
@@ -82,7 +83,7 @@ const ICONS = {
   'circle-check-big': circleCheckBig, banknote, ban, route, 'octagon-alert': octagonAlert,
   'triangle-alert': triangleAlert, 'spray-can': sprayCan, 'mic-off': micOff, paperclip,
   hourglass, check, mail, radio, 'undo-2': undoTwo, 'trash-2': trashTwo, 'refresh-cw': refreshCw,
-  eye,
+  eye, flag,
 };
 
 export function icon(name, {size = 18, className = ''} = {}){

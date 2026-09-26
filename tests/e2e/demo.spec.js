@@ -51,7 +51,7 @@ test('rating del tassista per targa, con targa mascherata', async ({page}) => {
 });
 
 test('segnalazione da ospite: campi obbligatori e invio', async ({page}) => {
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
   await expect(page.locator('#toast')).toContainText('Completa: nome e cognome');
   await page.fill('#reportForm [name=name]', 'Mario Rossi');
@@ -106,7 +106,7 @@ test('export dati aperti senza targhe né licenze', async ({page}) => {
 });
 
 test('foto allegata: metadati rimossi e volto sfocato sul dispositivo', async ({page}) => {
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
   await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await expect(page.locator('#thumbs .thumb')).toHaveAttribute('title', /1 volto sfocato/);

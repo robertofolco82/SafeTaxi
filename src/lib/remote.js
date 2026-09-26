@@ -19,6 +19,15 @@ export function italianPosition(p){
 
 export const STATUS_LABELS = {in_moderazione:'In moderazione', pubblicata:'Pubblicata', rifiutata:'Rifiutata'};
 
+// Segnalazione di contenuti (Digital Services Act, art. 16): motivi ed esiti.
+export const NOTICE_CATEGORIES = {
+  dati_personali:'Contiene dati personali di altre persone',
+  diffamatorio:'Accuse false o diffamatorie',
+  offensivo:'Linguaggio offensivo, minaccioso o discriminatorio',
+  falso:'Segnalazione inventata o fuorviante',
+  altro:'Altro contenuto illecito o contrario ai termini d\'uso'};
+export const NOTICE_STATUS = {ricevuta:'In verifica', accolta:'Contenuto rimosso', respinta:'Contenuto mantenuto'};
+
 // Messaggi di Supabase Auth tradotti in italiano (codici: https://supabase.com/docs/guides/auth/debugging/error-codes).
 const AUTH_ERRORS = {
   invalid_credentials:'Email o password non corretti.',

@@ -47,10 +47,10 @@ export function createSupabaseBackend(url, key){
   }
   // Repliche dei tassisti pubblicate, raggruppate per segnalazione.
   async function publicReplies(){
-    const {data, error} = await sb.from('driver_replies').select('report_id,body,created_at').order('created_at').limit(500);
+    const {data, error} = await sb.from('driver_replies').select('id,report_id,body,created_at').order('created_at').limit(500);
     if (error) return {};
     const byReport = {};
-    data.forEach(d => (byReport[d.report_id] = byReport[d.report_id] || []).push({body:d.body, createdAt:Date.parse(d.created_at)}));
+    data.forEach(d => (byReport[d.report_id] = byReport[d.report_id] || []).push({id:d.id, body:d.body, createdAt:Date.parse(d.created_at)}));
     return byReport;
   }
   const call = async (fn, args) => { const {data, error} = await sb.rpc(fn, args); if (error) fail(error); return data; };
@@ -194,6 +194,14 @@ export function createSupabaseBackend(url, key){
     moderationQueue: () => call('moderation_queue'),
     moderateReport: (id, status, reason) => call('moderate_report', {p_id:id, p_status:status, p_reason:reason || null}),
     moderateAttachment: (id, isPublic) => call('moderate_attachment', {p_id:id, p_public:isPublic}),
+    // ---- segnalazione di contenuti (Digital Services Act) ----
+    async submitContentNotice(d){
+      await ensureSession();
+      return call('submit_content_notice', {p_kind:d.kind, p_target:d.target, p_category:d.category, p_explanation:d.explanation,
+        p_name:d.name, p_email:d.email, p_good_faith:d.goodFaith});
+    },
+    myContentNotices: async () => session ? call('my_content_notices') : [],
+    resolveContentNotice: (id, remove, reason) => call('resolve_content_notice', {p_id:id, p_remove:remove, p_reason:reason}),
     moderateReply: (id, status, reason) => call('moderate_reply', {p_id:id, p_status:status, p_reason:reason || null}),
     async signedUrls(paths){
       if (!paths.length) return {};

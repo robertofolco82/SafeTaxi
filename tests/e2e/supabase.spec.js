@@ -78,7 +78,7 @@ test('i dati arrivano dal database: feed, Termometro e rating per targa', async 
 
 test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazione immediata', async ({page}) => {
   const description = `Ospite ${Date.now()}: tassametro non avviato alla partenza della corsa.`;
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await page.fill('#reportForm [name=name]', 'Mario Rossi');
   await page.fill('#reportForm [name=licenza]', '1234');
   await page.fill('#reportForm [name=targa]', 'QX' + String(Date.now()).slice(-3) + 'ZZ');
@@ -119,7 +119,7 @@ test('registrazione con conferma email, segnalazione verificata, punti alla pubb
   await expect(page.locator('#profileBox')).toContainText(email);
   await expect(page.locator('#profileBox')).toContainText('verificato');
 
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await expect(page.locator('#anonNotice')).toContainText('Segnalazione verificata');
   await page.fill('#reportForm [name=name]', 'Giulia Verdi');
   await page.fill('#reportForm [name=licenza]', '4321');
@@ -169,7 +169,7 @@ test('Google: il pulsante avvia il login OAuth di Supabase', async ({page}) => {
 
 test('allegati: foto ripulita e audio caricati, verificati dal server; la foto approvata compare nel feed', async ({page}) => {
   const description = `Allegati ${Date.now()}: tassista al telefono per tutta la corsa, audio e foto.`;
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
   await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await page.setInputFiles('#micAudio', {name: 'registrazione.wav', mimeType: 'audio/wav', buffer: wav()});
@@ -237,7 +237,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   await rest(`profiles?id=eq.${created.id}`, {method: 'PATCH', body: JSON.stringify({role: 'moderatore'}), headers: {Prefer: 'return=minimal'}});
 
   // 1. Un ospite invia la segnalazione con una foto.
-  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
   await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await page.fill('#reportForm [name=name]', 'Paola Blu');
@@ -487,4 +487,65 @@ test('news: titoli dai feed con testata, data e link all\'articolo originale', a
   await expect(google).toContainText('Testata di prova · 2 h fa · via Google News');
   await expect(page.locator('#newsBadge')).toBeHidden();
   await expect(page.locator('#newsList')).not.toContainText('Esempio ·');
+});
+
+test('segnalazione di un contenuto (DSA): un ospite segnala, il moderatore rimuove con motivazione, il segnalante vede l\'esito', async ({page, browser}) => {
+  test.setTimeout(120000);
+  const stamp = Date.now(), email = `autore.dsa.${stamp}@example.com`, password = 'password-autore-dsa-1';
+  const modEmail = `moderatore.dsa.${stamp}@example.com`, modPassword = 'password-moderatore-dsa-1';
+  // Una segnalazione pubblicata di un utente verificato, e un moderatore.
+  await fetch(`${API}/auth/v1/admin/users`, {method: 'POST', headers: serviceHeaders(), body: JSON.stringify({email, password, email_confirm: true})});
+  const mod = await (await fetch(`${API}/auth/v1/admin/users`, {method: 'POST', headers: serviceHeaders(),
+    body: JSON.stringify({email: modEmail, password: modPassword, email_confirm: true})})).json();
+  await rest(`profiles?id=eq.${mod.id}`, {method: 'PATCH', body: JSON.stringify({role: 'moderatore'}), headers: {Prefer: 'return=minimal'}});
+  const sb = createClient(API, PUBLISHABLE, {auth: {persistSession: false}});
+  await sb.auth.signInWithPassword({email, password});
+  const description = `DSA ${stamp}: il tassista si chiama Mario Bianchi e abita in via Roma.`;
+  const {data: reportId} = await sb.rpc('submit_report', {p_city: 'roma', p_type: 'comportamento', p_rating: 1, p_description: description,
+    p_reporter_name: 'Autore Prova', p_plate: 'DS' + String(stamp).slice(-3) + 'AA', p_license: '12'});
+  await rest(`reports?id=eq.${reportId}`, {method: 'PATCH', body: JSON.stringify({status: 'pubblicata'}), headers: {Prefer: 'return=minimal'}});
+
+  // 1. Un ospite segnala il contenuto dal feed.
+  await page.reload();
+  const item = page.locator('.feed-item', {hasText: description});
+  await item.getByRole('button', {name: 'Segnala contenuto'}).click();
+  await page.selectOption('#noticeCategory', 'dati_personali');
+  await page.fill('#noticeExplanation', 'Riporta nome, cognome e indirizzo di casa del tassista.');
+  await page.fill('#noticeName', 'Lucia Neri');
+  await page.fill('#noticeEmail', 'lucia.neri@example.com');
+  await page.getByRole('button', {name: 'Invia la segnalazione'}).click();
+  await expect(page.locator('#toast')).toContainText('Conferma la dichiarazione di buona fede');
+  await page.check('#noticeGoodFaith');
+  await page.getByRole('button', {name: 'Invia la segnalazione'}).click();
+  await expect(page.locator('#toast')).toContainText('Segnalazione ricevuta');
+
+  // 2. Il moderatore (altro browser) vede segnalante e motivo, e rimuove il contenuto con una motivazione.
+  const modCtx = await browser.newContext({locale: 'it-IT'});
+  await modCtx.route(u => !['127.0.0.1', 'localhost'].includes(u.hostname), r => r.request().url().includes('tile.openstreetmap.org') ? r.fulfill({contentType: 'image/png', body: PNG}) : r.abort());
+  const m = await modCtx.newPage();
+  await m.goto('/');
+  await m.locator('#m-privacy').getByRole('button', {name: 'Ho capito'}).click();
+  await m.locator('#profileBtn').click();
+  await m.getByRole('button', {name: 'Accedi o registrati'}).click();
+  await m.fill('#loginEmail', modEmail);
+  await m.fill('#loginPwd', modPassword);
+  await m.locator('#m-login').getByRole('button', {name: 'Accedi', exact: true}).click();
+  await m.getByRole('button', {name: 'Apri la moderazione'}).click();
+  const card = m.locator('[data-notice]', {hasText: description});
+  await expect(card).toContainText('Lucia Neri · lucia.neri@example.com');
+  await expect(card).toContainText('Riporta nome, cognome e indirizzo');
+  await card.locator('textarea').fill('Contiene nome e indirizzo del tassista: dati personali di terzi.');
+  await card.getByRole('button', {name: 'Rimuovi il contenuto'}).click();
+  await expect(m.locator('#toast')).toContainText('Contenuto rimosso');
+  await modCtx.close();
+
+  const [report] = await rest(`reports?id=eq.${reportId}&select=status,rejection_reason`);
+  expect(report).toEqual({status: 'rifiutata', rejection_reason: 'Rimossa dopo una segnalazione: Contiene nome e indirizzo del tassista: dati personali di terzi.'});
+
+  // 3. Il segnalante trova l'esito nel profilo; il contenuto non è più nel feed.
+  await page.reload();
+  await expect(page.locator('.feed-item', {hasText: description})).toHaveCount(0);
+  await page.locator('#profileBtn').click();
+  await expect(page.locator('#profileBox')).toContainText('Contenuto rimosso');
+  await expect(page.locator('#profileBox')).toContainText('Motivazione: Contiene nome e indirizzo del tassista');
 });

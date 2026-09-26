@@ -301,6 +301,20 @@
   <button class="btn" style="margin-top:12px" onclick="sendReply()">Invia replica</button>
 </div></div>
 
+<!-- SEGNALAZIONE DI CONTENUTI (Digital Services Act, art. 16) -->
+<div class="modal" id="m-notice"><div class="sheet">
+  <h2><span data-icon="flag" data-icon-size="18"></span>Segnala un contenuto <button class="x" onclick="closeModal('m-notice')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
+  <p class="muted" id="noticeWhat"></p>
+  <p class="muted" style="margin-top:6px">Usa questo modulo per contenuti illeciti o contrari ai termini d'uso. Un moderatore verifica ogni segnalazione e ti comunica la decisione con la motivazione: la trovi nel tuo profilo.</p>
+  <label class="f" for="noticeCategory">Motivo <span class="req">*</span></label><select id="noticeCategory"></select>
+  <label class="f" for="noticeExplanation">Perché il contenuto è illecito o scorretto <span class="req">*</span></label><textarea id="noticeExplanation" placeholder="Spiega in modo preciso cosa non va (minimo 20 caratteri)"></textarea>
+  <label class="f" for="noticeName">Nome e cognome <span class="req">*</span></label><input id="noticeName" autocomplete="name" placeholder="Non viene pubblicato">
+  <label class="f" for="noticeEmail">Email <span class="req">*</span></label><input id="noticeEmail" type="email" autocomplete="email" placeholder="Non viene pubblicata">
+  <label class="row" style="margin-top:10px;font-size:13px;align-items:flex-start"><input type="checkbox" id="noticeGoodFaith" style="width:auto;margin-top:2px"> Dichiaro in buona fede che le informazioni contenute in questa segnalazione sono accurate e complete.</label>
+  <button class="btn" style="margin-top:12px" onclick="sendNotice()">Invia la segnalazione</button>
+  <div class="note">Procedura prevista dal Digital Services Act (Reg. UE 2022/2065, art. 16). Nome ed email servono solo per la verifica e sono visibili solo ai moderatori.</div>
+</div></div>
+
 <!-- COME VERIFICHIAMO LE RECENSIONI (informazioni richieste dal Codice del consumo, art. 22, come modificato dal D.Lgs. 26/2023) -->
 <div class="modal" id="m-verifica"><div class="sheet">
   <h2><span data-icon="shield-check" data-icon-size="18"></span>Come verifichiamo le recensioni <button class="x" onclick="closeModal('m-verifica')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
