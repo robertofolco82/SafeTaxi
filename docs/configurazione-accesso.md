@@ -9,9 +9,9 @@ Progetto Supabase di sviluppo: `SafeTaxi` (ref `emgookqbvrehcroxpypx`).
 
 Supabase → progetto SafeTaxi → **Authentication → URL Configuration**:
 
-- **Site URL**: l'indirizzo di produzione su Vercel (Vercel → progetto safetaxi → **Domains**), per esempio `https://safetaxi.vercel.app`.
+- **Site URL**: `https://safetaxi-nu.vercel.app` (dominio di produzione su Vercel).
 - **Redirect URLs**, aggiungi:
-  - `https://<dominio-di-produzione>/**`
+  - `https://safetaxi-nu.vercel.app/**`
   - `https://safetaxi-*-robertofolco-3821.vercel.app/**` (anteprime delle pull request)
   - `http://localhost:5173/**` (sviluppo in locale)
 
@@ -42,7 +42,7 @@ Su [console.cloud.google.com](https://console.cloud.google.com):
 2. **Google Auth Platform → Branding** (schermata di consenso OAuth): nome app `Safe Taxi`, email di assistenza, destinatari **Esterni**. Gli ambiti predefiniti (`openid`, `email`, `profile`) bastano.
 3. **Google Auth Platform → Clients → Create client**:
    - tipo **Web application**, nome `Safe Taxi web`;
-   - **Authorized JavaScript origins**: `https://<dominio-di-produzione>` e `http://localhost:5173`;
+   - **Authorized JavaScript origins**: `https://safetaxi-nu.vercel.app` e `http://localhost:5173`;
    - **Authorized redirect URIs**: `https://emgookqbvrehcroxpypx.supabase.co/auth/v1/callback`.
 4. Copia **Client ID** e **Client secret**.
 5. Finché l'app è in stato **Testing**, possono accedere solo gli utenti aggiunti in **Audience → Test users**: aggiungi i tuoi indirizzi di prova. La pubblicazione per tutti si fa più avanti, con l'informativa privacy pronta (punto 5 della roadmap).

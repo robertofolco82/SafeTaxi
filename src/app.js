@@ -9,6 +9,7 @@ import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from '
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
 import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
+import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
 /* ================= UTILITY ================= */
 const $ = s => document.querySelector(s);
@@ -173,7 +174,8 @@ function renderFeed(){
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px">' + (TYPES[r.type] || '') + '</span><span class="stars">' + stars(r.rating) + '</span></div>' +
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
     '<div class="muted" style="margin-top:4px">🚕 ' + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
-    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? ' · 📎 ' + r.attachments : '') + '</div></div>'
+    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? ' · 📎 ' + r.attachments : '') + '</div>' +
+    (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') + '</div>'
   ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
 function initHome(){
@@ -355,18 +357,34 @@ function initReportForm(){
  ['camPhoto','camVideo','micAudio','gallery'].forEach(id => document.getElementById(id).addEventListener('change', onFiles));
 }
 function pick(id){ document.getElementById(id).click(); }
-function onFiles(e){
- Array.from(e.target.files || []).forEach(f => {
-    if (f.size > 10*1024*1024) { toast('"' + f.name + '" supera 10 MB'); return; }
-    if (attachments.length >= 6) { toast('Massimo 6 allegati'); return; }
- attachments.push({id: Math.random().toString(36).slice(2), file:f, url: f.type.indexOf('image/') === 0 ? URL.createObjectURL(f) : null});
-  });
-  e.target.value = ''; renderThumbs();
+// Foto: elaborate subito sul dispositivo (niente metadati, volti pixelati); l'anteprima mostra ciò che verrà inviato.
+// Video e audio: allegati così come sono, visibili solo ai moderatori.
+async function onFiles(e){
+  const files = Array.from(e.target.files || []); e.target.value = '';
+  for (const f of files) {
+    if (attachments.length >= MAX_ATTACHMENTS) { toast('Massimo ' + MAX_ATTACHMENTS + ' allegati'); break; }
+    const kind = f.type.indexOf('image/') === 0 ? 'foto' : attachmentKind(f.type);
+    if (!kind) { toast('"' + f.name + '": formato non supportato'); continue; }
+    if (kind !== 'foto' && f.size > MAX_ATTACHMENT_BYTES) { toast('"' + f.name + '" supera 10 MB'); continue; }
+    const a = {id: Math.random().toString(36).slice(2), kind, name: f.name, file: kind === 'foto' ? null : f, url: null, faces: null, processing: kind === 'foto'};
+    attachments.push(a); renderThumbs();
+    if (kind !== 'foto') continue;
+    try {
+      const {processPhoto} = await import('./media/photo.js');
+      const r = await processPhoto(f);
+      if (r.blob.size > MAX_ATTACHMENT_BYTES) throw new Error('"' + f.name + '" supera 10 MB anche dopo la compressione');
+      a.file = r.blob; a.faces = r.faces; a.url = URL.createObjectURL(r.blob); a.processing = false;
+    } catch(err) { attachments = attachments.filter(x => x !== a); toast(err.message); }
+    renderThumbs();
+  }
 }
 function renderThumbs(){
  $('#thumbs').innerHTML = attachments.map(a => {
-    const t = a.file.type, ic = t.indexOf('video/') === 0 ? '🎥' : t.indexOf('audio/') === 0 ? '🎙️' : '📄';
-    return '<div class="thumb" title="' + esc(a.file.name) + '">' + (a.url ? '<img src="' + a.url + '" alt="">' : ic) + '<button type="button" onclick="removeAtt(\'' + a.id + '\')">✕</button></div>';
+    const ic = a.processing ? '⏳' : a.kind === 'video' ? '🎥' : a.kind === 'audio' ? '🎙️' : '📄';
+    const info = a.processing ? 'Preparo la foto…' : a.kind === 'foto' ? (a.faces ? a.faces + (a.faces === 1 ? ' volto sfocato' : ' volti sfocati') : 'Nessun volto trovato') : 'Visibile solo ai moderatori';
+    return '<div class="thumb" title="' + esc(a.name + ' · ' + info) + '">' + (a.url ? '<img src="' + a.url + '" alt="">' : ic) +
+      (a.kind === 'foto' && !a.processing ? '<span class="faces">' + (a.faces ? '😶 ' + a.faces : '✓') + '</span>' : '') +
+      '<button type="button" onclick="removeAtt(\'' + a.id + '\')">✕</button></div>';
   }).join('');
 }
 function removeAtt(id){ const a = attachments.find(x => x.id === id); if (a && a.url) URL.revokeObjectURL(a.url); attachments = attachments.filter(x => x.id !== id); renderThumbs(); }
@@ -393,18 +411,18 @@ async function submitReport(e){
   if (!d.description || d.description.trim().length < 20) errs.push('descrizione (min. 20 caratteri)');
   if (!d.consent) errs.push('dichiarazione e privacy');
   if (errs.length) return toast('Completa: ' + errs.join(', '));
-  // Allegati: il caricamento sul server arriva con il blocco 2c; per ora restano sul dispositivo.
+  if (attachments.some(a => a.processing)) return toast('Attendi: sto preparando le foto');
   const n = attachments.length, pos = italianPosition(reportGeo), btn = f.querySelector('button[type=submit]');
   submitting = true; if (btn) btn.disabled = true;
   try {
     const res = await backend.submitReport({name:d.name.trim(), license:d.licenza, plate:normPlate(d.targa), city:d.city,
       from:(d.from || '').trim(), to:(d.to || '').trim(), type:d.type, rating:reportRating, description:d.description.trim(),
       cost: d.cost ? parseFloat(d.cost) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
-      attachments:n, lat:pos.lat, lng:pos.lng});
+      attachments:n, files:attachments.map(a => ({kind:a.kind, blob:a.file, faces:a.faces})), lat:pos.lat, lng:pos.lng});
     attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
     f.reset(); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
     await afterSubmit(); openTab('home');
-    toast(sentMessage(res, 'Segnalazione'));
+    toast(sentMessage(res, 'Segnalazione') + (res.attachmentErrors && res.attachmentErrors.length ? ' Allegati non caricati: ' + res.attachmentErrors.join('; ') : ''));
   } catch(err) { toast(err.message); }
   finally { submitting = false; if (btn) btn.disabled = false; }
 }

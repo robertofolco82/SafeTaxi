@@ -39,7 +39,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta
+      - run: npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
       - run: npm run test:db
       - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e -- --project=supabase
