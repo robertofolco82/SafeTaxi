@@ -92,6 +92,9 @@ Si sostiene con pubblicità non invasiva.
    - GPS in background, fotocamera, notifiche push.
    - Requisiti store: cancellazione dell'account, dichiarazione sull'uso della posizione in background, sezione "sicurezza dei dati" di Google Play.
 5. Compliance: valutazione d'impatto privacy (DPIA), informativa, termini d'uso, procedura di segnalazione e rimozione prevista dal Digital Services Act, consenso per cookie e pubblicità.
+   - ✅ 5a. Segnalazione di contenuti (DSA artt. 16–17): "Segnala contenuto" su segnalazioni e repliche, decisione motivata del moderatore, esito nel profilo, punti tolti ai contenuti rimossi.
+   - 5b. Bozze in `docs/legal/` (informativa, termini, DPIA, cookie e pubblicità, DSA): da validare con un legale e completare (titolare, email di contatto) prima di pubblicarle nell'app.
+   - Da fare dopo la validazione: testi nell'app, conservazione delle segnalazioni (proposta 3 anni) e cancellazione di quelle rifiutate, sospensione degli account che abusano (art. 23 DSA).
 
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).
@@ -109,6 +112,8 @@ Si sostiene con pubblicità non invasiva.
 - News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)
+- Segnalazioni che attribuiscono reati al conducente (art. 10 GDPR, art. 2-octies Codice privacy): serve un parere legale sul perimetro ammesso (vedi `docs/legal/dpia.md`, rischio R1).
+- Titolare, email di contatto privacy e punto di contatto DSA da indicare nei testi legali.
 - Limite di consultazione del rating per targa (`get_driver_rating` è pubblica): da valutare contro la raccolta massiva di targhe.
 - Notifiche push: servono un progetto Firebase (Android) e una chiave APNs con account Apple Developer (iOS).
 - Account sviluppatore per gli store: Apple Developer 99 $/anno, Google Play 25 $ una tantum.

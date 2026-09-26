@@ -53,6 +53,8 @@ export function createLocalBackend(getState, save){
     async startLiveShare(){ throw new Error('La condivisione in tempo reale richiede il backend Supabase.'); },
     async getLiveShare(){ return {status:'non_trovata'}; },
     async submitDriverReply(){ throw new Error('Le repliche richiedono il backend Supabase.'); },
+    async submitContentNotice(){ throw new Error('La segnalazione di contenuti richiede il backend Supabase.'); },
+    async myContentNotices(){ return []; },
     async redeem(r){
       const s = getState();
       s.points -= r.c; s.ledger.unshift({ts:Date.now(), n:-r.c, why:'Riscatto: ' + r.n}); save();

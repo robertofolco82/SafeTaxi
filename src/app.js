@@ -8,7 +8,7 @@ import {seedReports} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
 import {icon} from './lib/icons.js';
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
-import {STATUS_LABELS, italianPosition} from './lib/remote.js';
+import {STATUS_LABELS, NOTICE_CATEGORIES, NOTICE_STATUS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
@@ -69,7 +69,8 @@ async function reloadData(){
   try {
     const p = await backend.points(); DB.points = p.total; DB.ledger = p.ledger;
     DB.myReports = await backend.myReports();
-  } catch(e) { DB.points = 0; DB.ledger = []; DB.myReports = []; }
+    DB.myNotices = await backend.myContentNotices();
+  } catch(e) { DB.points = 0; DB.ledger = []; DB.myReports = []; DB.myNotices = []; }
   loading = false;
   refreshAll();
 }
@@ -202,8 +203,10 @@ function renderFeed(){
     '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.rideVerified ? '<span class="badge b-ok">corsa verificata</span>' : '') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') +
-    (r.replies || []).map(d => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b> <span class="muted">· verificata dal moderatore</span><br>' + esc(d.body) + '</div>').join('') +
-    (!isLocal() && !r.demo ? '<button class="linkbtn" onclick="openReply(\'' + r.id + '\')">Sei il tassista? Replica</button>' : '') + '</div>'
+    (r.replies || []).map(d => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b> <span class="muted">· verificata dal moderatore</span><br>' + esc(d.body) +
+      (!isLocal() ? '<br><button class="linkbtn" onclick="openNotice(\'replica\', \'' + d.id + '\')">Segnala questa replica</button>' : '') + '</div>').join('') +
+    (!isLocal() && !r.demo ? '<div class="row" style="gap:14px"><button class="linkbtn" onclick="openReply(\'' + r.id + '\')">Sei il tassista? Replica</button>' +
+      '<button class="linkbtn" onclick="openNotice(\'segnalazione\', \'' + r.id + '\')">Segnala contenuto</button></div>' : '') + '</div>'
   ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
 function initHome(){
@@ -763,7 +766,7 @@ function renderProfile(){
       ? '<h2>' + icon('user-round-check', {size:19}) + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider === 'google' ? 'Google' : u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
       : '<h2>' + icon('user', {size:19}) + 'Ospite</h2><p class="muted">Senza account puoi inviare valutazioni e usare l’SOS. Per far contare le segnalazioni nei rating e accumulare punti serve l’accesso.</p><button class="btn" style="margin-top:10px" onclick="openModal(\'m-login\')">Accedi o registrati</button>') + '</div>' +
     (isMod() ? '<div class="card"><h3>' + icon('shield-check', {size:16}) + 'Moderazione</h3><p class="muted">Segnalazioni, foto e repliche da verificare.</p><button class="btn" style="margin-top:8px" onclick="openTab(\'moderazione\')">Apri la moderazione</button></div>' : '') +
-    myReportsCard() +
+    myReportsCard() + myNoticesCard() +
     '<div class="card"><h3>' + icon('gift', {size:16}) + 'Punti e premi</h3><div class="thermo"><div class="val">' + fmtNum(DB.points) + '</div><div class="muted">Livello <b>' + lv.name + '</b>' + (lv.next ? ' · ' + (lv.next.min - DB.points) + ' punti a ' + lv.next.name : '') + '</div></div>' +
     '<div class="pbar"><span class="p"><i style="width:' + lv.pct + '%;background:var(--pri)"></i></span></div>' +
     '<div class="note">Stessi punti per segnalazioni positive e negative: +50 segnalazione completa, +20 con allegati, +10 valutazione di fine corsa. Si premia la partecipazione, non il giudizio espresso.</div>' +
@@ -802,6 +805,13 @@ function myReportsCard(){
     (r.rejection_reason ? '<br><span class="muted">Motivo: ' + esc(r.rejection_reason) + '</span>' : '') + '</span>' +
     '<span class="badge' + (r.status === 'pubblicata' ? ' b-ok' : '') + '">' + (STATUS_LABELS[r.status] || r.status) + '</span></div>').join('') +
     '<div class="note">Ogni segnalazione è pubblicata solo dopo la revisione di un moderatore.' + (DB.user ? '' : ' Senza account le segnalazioni restano legate a questo dispositivo.') + '</div></div>';
+}
+function myNoticesCard(){
+  if (!DB.myNotices || !DB.myNotices.length) return '';
+  return '<div class="card"><h3>' + icon('flag', {size:16}) + 'Contenuti che hai segnalato</h3>' + DB.myNotices.slice(0, 10).map(n =>
+    '<div class="kv"><span>«' + esc(n.content || '') + '»<br><span class="muted">' + esc(NOTICE_CATEGORIES[n.category] || n.category) + ' · ' + ago(Date.parse(n.created_at)) +
+    (n.decision_reason ? '<br>Motivazione: ' + esc(n.decision_reason) : '') + '</span></span>' +
+    '<span class="badge' + (n.status === 'accolta' ? ' b-ok' : '') + '">' + (NOTICE_STATUS[n.status] || n.status) + '</span></div>').join('') + '</div>';
 }
 function addContact(){
   const n = $('#cName').value.trim(), p = $('#cPhone').value.trim();
@@ -870,6 +880,29 @@ async function resetDemo(){
 
 /* ================= REPLICA DEL TASSISTA ================= */
 let replyTarget = null;
+// Segnalazione di un contenuto pubblicato (Digital Services Act, art. 16).
+let noticeTarget = null;
+function openNotice(kind, id){
+  noticeTarget = {kind, id};
+  $('#noticeCategory').innerHTML = '<option value="">Scegli il motivo</option>' + Object.entries(NOTICE_CATEGORIES).map(([k, l]) => '<option value="' + k + '">' + esc(l) + '</option>').join('');
+  $('#noticeExplanation').value = ''; $('#noticeGoodFaith').checked = false;
+  $('#noticeName').value = DB.user ? DB.user.name : ''; $('#noticeEmail').value = DB.user ? DB.user.email : '';
+  $('#noticeWhat').textContent = kind === 'replica' ? 'Stai segnalando una replica del tassista.' : 'Stai segnalando una segnalazione pubblicata.';
+  openModal('m-notice');
+}
+async function sendNotice(){
+  const d = {kind:noticeTarget.kind, target:noticeTarget.id, category:$('#noticeCategory').value, explanation:$('#noticeExplanation').value.trim(),
+    name:$('#noticeName').value.trim(), email:$('#noticeEmail').value.trim(), goodFaith:$('#noticeGoodFaith').checked};
+  if (!d.category) return toast('Scegli il motivo della segnalazione');
+  if (d.explanation.length < 20) return toast('Spiega il motivo in almeno 20 caratteri');
+  if (d.name.length < 3 || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.email)) return toast('Indica nome, cognome ed email');
+  if (!d.goodFaith) return toast('Conferma la dichiarazione di buona fede');
+  try {
+    await backend.submitContentNotice(d); closeModal('m-notice');
+    DB.myNotices = await backend.myContentNotices().catch(() => DB.myNotices);
+    toast('Segnalazione ricevuta: un moderatore la verificherà. Trovi l\'esito nel profilo.');
+  } catch(e) { toast(e.message); }
+}
 function openReply(id){ replyTarget = id; ['replyIdent', 'replyContact', 'replyBody'].forEach(i => { $('#' + i).value = ''; }); openModal('m-reply'); }
 async function sendReply(){
   const ident = $('#replyIdent').value.trim(), contact = $('#replyContact').value.trim(), body = $('#replyBody').value.trim();
@@ -907,7 +940,9 @@ async function renderModeration(){
       q.published_with_photos.map(r => '<div class="card"><b>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + '</b>' +
         '<p class="muted" style="margin-top:4px">' + esc(r.description) + '</p>' + modMedia(r.attachments) + '</div>').join('') : '') +
     h('message-square', 'Repliche dei tassisti', q.replies.length) +
-    (q.replies.length ? q.replies.map(modReplyCard).join('') : '<div class="card muted">Nessuna replica in attesa.</div>');
+    (q.replies.length ? q.replies.map(modReplyCard).join('') : '<div class="card muted">Nessuna replica in attesa.</div>') +
+    h('flag', 'Contenuti segnalati (Digital Services Act)', q.notices.length) +
+    (q.notices.length ? q.notices.map(modNoticeCard).join('') : '<div class="card muted">Nessun contenuto segnalato.</div>');
 }
 function modMedia(atts){
   if (!atts.length) return '';
@@ -946,6 +981,21 @@ function modReplyCard(d){
     kv('Contatto per la verifica', d.contact) +
     '<div class="row" style="margin-top:10px"><button class="btn" onclick="modDecide(\'reply\', \'' + d.id + '\', \'pubblicata\')">' + icon('check', {size:15}) + 'Pubblica</button>' +
     '<button class="btn danger" onclick="modDecide(\'reply\', \'' + d.id + '\', \'rifiutata\')">' + icon('ban', {size:15}) + 'Rifiuta</button></div></div>';
+}
+function modNoticeCard(n){
+  return '<div class="card" data-notice="' + n.id + '"><div class="row between"><b>' + esc(NOTICE_CATEGORIES[n.category] || n.category) + '</b><span class="muted">' + ago(Date.parse(n.created_at)) + '</span></div>' +
+    '<p class="muted" style="margin:4px 0">' + (n.kind === 'replica' ? 'Replica del tassista' : 'Segnalazione') + ' · ' + esc(CITIES[n.city_key] ? CITIES[n.city_key].n : (n.city_key || '')) + (n.plate_masked ? ' · Taxi ' + esc(n.plate_masked) : '') + '</p>' +
+    '<div class="reply">' + esc(n.content || '(contenuto non più disponibile)') + '</div>' +
+    kv('Motivo indicato', n.explanation) + kv('Segnalante', (n.notifier_name || '—') + ' · ' + (n.notifier_email || '—')) +
+    '<label class="f" for="nr-' + n.id + '">Motivazione della decisione (la vedono il segnalante e, se rimosso, l\'autore)</label>' +
+    '<textarea id="nr-' + n.id + '" style="min-height:60px"></textarea>' +
+    '<div class="row" style="margin-top:10px"><button class="btn danger" onclick="modNotice(\'' + n.id + '\', true)">' + icon('ban', {size:15}) + 'Rimuovi il contenuto</button>' +
+    '<button class="btn sec" onclick="modNotice(\'' + n.id + '\', false)">' + icon('check', {size:15}) + 'Mantieni</button></div></div>';
+}
+async function modNotice(id, remove){
+  const reason = $('#nr-' + id).value.trim();
+  if (reason.length < 10) return toast('Scrivi la motivazione della decisione (almeno 10 caratteri)');
+  await runMod(() => backend.resolveContentNotice(id, remove, reason), remove ? 'Contenuto rimosso.' : 'Contenuto mantenuto.');
 }
 async function runMod(fn, message){
   try { await fn(); toast(message); await renderModeration(); reloadData(); } catch(e) { toast(e.message); }
@@ -1065,4 +1115,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

@@ -136,6 +136,12 @@ Per aggiornare la funzione sul progetto remoto: `npx supabase functions deploy r
 
 Per rendere moderatore un utente: **SQL Editor** → `update public.profiles set role = 'moderatore' where id = '<id utente>';`
 
+### Segnalazione di contenuti (Digital Services Act)
+
+Sotto ogni segnalazione e replica pubblicata c'è **Segnala contenuto** (art. 16 DSA): motivo, spiegazione, nome, email e dichiarazione di buona fede; va bene anche l'accesso anonimo. Il moderatore trova i contenuti segnalati nella pagina Moderazione, con i dati del segnalante, e decide sempre con una motivazione: **Rimuovi il contenuto** (la segnalazione passa a "rifiutata", l'autore vede il motivo e perde i punti ricevuti) o **Mantieni**. Il segnalante vede l'esito e la motivazione nel profilo. Funzioni: `submit_content_notice`, `resolve_content_notice`, `my_content_notices`; nome ed email in `private.content_notice_contacts`, cancellati con l'account.
+
+Bozze dei testi legali (non ancora nell'app, da validare): `docs/legal/` — informativa privacy, termini d'uso, DPIA, cookie e pubblicità, obblighi DSA.
+
 ### News dal settore
 
 La funzione `refresh-news` legge i feed RSS di Google News (ricerca "taxi, tassisti, NCC, radiotaxi" sulle testate italiane) e di Consumerismo No Profit, tiene solo le notizie pertinenti (esclusi taxi acquei, film, videogiochi e omonimi) degli ultimi 30 giorni e le salva con `save_news`: solo titolo, testata, data e link all'articolo originale, niente testo né immagini. Fonti e filtro in `supabase/functions/_shared/news.js` (testati con feed reali in `tests/fixtures/`).
