@@ -86,6 +86,7 @@ Si sostiene con pubblicità non invasiva.
 3. ✅ Tracking live: link temporaneo (`?live=<token>`, 3 ore, una condivisione attiva per utente); token salvato solo come impronta SHA-256; posizioni cancellate a fine corsa; pagina per chi riceve il link con aggiornamento ogni 8 secondi. Nel browser il GPS si ferma in background: serve l'app nativa (punto 4).
 4. Packaging con Capacitor per iOS e Android (appId `it.safetaxi.app`, da confermare prima della pubblicazione: non si può cambiare dopo)
    - ✅ 4a. Progetti `android/` e `ios/`, GPS durante la corsa anche a schermo spento (servizio in primo piano, senza "posizione sempre"), login e link email che tornano all'app (`it.safetaxi.app://auth`), link esterni fuori dalla WebView, invio posizioni del tracking live con HTTP nativo, APK Android e build iOS in CI.
+   - ✅ 4b. Cancellazione dell'account dall'app e dal sito (`?account=elimina`, funzione `delete-account`); bozze di "Sicurezza dei dati" (Google Play) ed etichette privacy (Apple) in `docs/store/`, da validare.
    - GPS in background, fotocamera, notifiche push.
    - Requisiti store: cancellazione dell'account, dichiarazione sull'uso della posizione in background, sezione "sicurezza dei dati" di Google Play.
 5. Compliance: valutazione d'impatto privacy (DPIA), informativa, termini d'uso, procedura di segnalazione e rimozione prevista dal Digital Services Act, consenso per cookie e pubblicità.
