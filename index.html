@@ -16,6 +16,20 @@
 <link rel="icon" href="data:,">
 </head>
 <body>
+<!-- Pagina per chi riceve il link della corsa (?live=...): sostituisce l'app. -->
+<div id="liveView" class="hidden">
+  <header class="top"><div class="brand">Safe Taxi<small>Corsa condivisa in tempo reale</small></div></header>
+  <main>
+    <div class="card">
+      <div class="row between"><h3>📍 Dove si trova il taxi</h3><span id="liveStatus" class="badge">…</span></div>
+      <div class="map" id="liveMap"></div>
+      <div style="margin:10px 0"><div class="muted">Sta percorrendo</div><div class="street" id="liveStreet">Carico…</div><div class="muted" id="liveInfo"></div></div>
+      <div class="note">Hai ricevuto questo link da chi è in taxi. La posizione si aggiorna da sola ed è visibile solo durante la corsa: alla fine viene cancellata.</div>
+      <button class="btn red" style="margin-top:10px" onclick="call112()">🚨 Chiama il 112</button>
+      <p class="muted" style="margin-top:8px">Chiedi sempre conferma: il numero di emergenza si usa solo in caso di reale pericolo.</p>
+    </div>
+  </main>
+</div>
 <div class="app">
   <header class="top">
     <div class="brand">🛡️ Safe Taxi<small>Segnala. Valuta. Viaggia sicuro.</small></div>
@@ -79,8 +93,10 @@
           <button class="btn sec" onclick="openShare(false)">📤 Condividi posizione</button>
           <button class="btn red" onclick="openSOS()">🚨 SOS</button>
         </div>
+        <button class="btn sec" style="margin-top:8px" onclick="startLiveShare()">🔴 Condividi la corsa in tempo reale</button>
+        <div id="liveState" class="muted" style="margin-top:6px"></div>
         <button class="btn sec" style="margin-top:8px" onclick="simulateRide()">🧪 Simula percorso (test)</button>
-        <div class="note">La posizione è usata solo durante la corsa e resta sul dispositivo. Nome della via da OpenStreetMap. Con app in background il tracciamento richiede la versione nativa.</div>
+        <div class="note">La posizione è usata solo durante la corsa. Se attivi la condivisione in tempo reale, chi ha il link vede dove sei fino alla fine della corsa (massimo 3 ore); poi le posizioni vengono cancellate. Nome della via da OpenStreetMap. Con app in background il tracciamento richiede la versione nativa.</div>
       </div>
     </section>
 
@@ -219,7 +235,7 @@
     <button class="btn" style="background:#16a34a" onclick="sendShare('whatsapp')">💬 WhatsApp</button>
     <button class="btn" onclick="sendShare('sms')">✉️ SMS</button>
   </div>
-  <div class="note">Il link apre Google Maps sulla posizione attuale (istantanea). Il link di tracciamento continuo richiede il backend; nel frattempo puoi usare "Posizione in tempo reale" di WhatsApp.</div>
+  <div class="note">Il link Google Maps mostra la posizione di questo momento. Per farti seguire per tutta la corsa usa "🔴 Condividi la corsa in tempo reale" nella scheda Corsa: il link compare qui nel messaggio.</div>
 </div></div>
 
 <!-- MODALE VALUTAZIONE FINE CORSA -->

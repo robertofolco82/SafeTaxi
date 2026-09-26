@@ -42,6 +42,8 @@ export function createLocalBackend(getState, save){
     async updatePassword(){},
     async signOut(){ getState().user = null; save(); },
     async role(){ return 'utente'; },
+    async startLiveShare(){ throw new Error('La condivisione in tempo reale richiede il backend Supabase.'); },
+    async getLiveShare(){ return {status:'non_trovata'}; },
     async submitDriverReply(){ throw new Error('Le repliche richiedono il backend Supabase.'); },
     async redeem(r){
       const s = getState();
