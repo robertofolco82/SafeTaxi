@@ -6,10 +6,13 @@ Include SOS, tracking della corsa, rating dei tassisti, heatmap nazionale e pren
 Si sostiene con pubblicità non invasiva.
 
 ## Stato attuale
-- `index.html`: prototipo in un unico file, funzionante. HTML/CSS/JS senza framework.
-  Ricostruito dall'archivio Word `Index.mht` (rimosso); verificato in Chromium senza errori in console.
-  Mappe con Leaflet + OpenStreetMap, ricerca indirizzi con Nominatim.
-  Dati salvati in localStorage. Nessun backend.
+- Prototipo funzionante, HTML/CSS/JS senza framework, con build Vite (struttura e comandi nel `README.md`).
+  - `index.html`: markup. `src/app.js`: interfaccia (DOM, mappe, stato). `src/lib/`: regole pure, senza DOM.
+  - Le funzioni richiamate da `onclick`/`onchange`/`onsubmit` sono esposte su `window` in fondo a `src/app.js`: se ne aggiungi una, registrala lì.
+  - Mappe con Leaflet (dipendenza npm) + tile OpenStreetMap, ricerca indirizzi con Nominatim.
+  - Dati salvati in localStorage. Nessun backend.
+- Test: `npm test` (Vitest, regole in `src/lib`) e `npm run test:e2e` (Playwright, flussi principali, rete esterna simulata). La CI su GitHub Actions li esegue a ogni push e pull request.
+- Prima di consegnare una modifica: `npm test`, `npm run build` e `npm run test:e2e` devono passare.
 - Tutti i dati sono DEMO: segnalazioni generate con seed fisso, licenze/domanda/tariffe per città, rating delle cooperative. Le news sono segnaposto.
 
 ## Requisiti funzionali
@@ -67,13 +70,15 @@ Si sostiene con pubblicità non invasiva.
 - Fornitore delle mappe per la produzione: le tile pubbliche di OSM non sono pensate per uso intensivo. Rispettare i limiti d'uso di Nominatim.
 
 ## Roadmap
-1. Struttura del repository: git, separazione HTML/CSS/JS oppure build con Vite, test minimi.
-2. Backend Supabase
+1. ✅ Struttura del repository: git, build con Vite, test minimi, CI.
+2. Backend Supabase (a blocchi, una pull request per blocco)
    - Schema: users, reports, attachments, driver_stats, coops, points_ledger, news.
    - Regole di accesso RLS.
    - Storage degli allegati con rimozione dei metadati EXIF e sfocatura di volti e targhe.
-   - Autenticazione Apple, Google, Facebook.
-   - Moderazione, API ed export SFTP.
+   - Autenticazione email/password, Google e anonima (Apple e Facebook rinviati).
+   - Moderazione: all'inizio dal pannello Supabase, poi pagina "Moderazione" nell'app riservata ai moderatori.
+   - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
+   - API ed export SFTP: rinviati.
 3. Tracking live: sessioni di condivisione con link temporaneo.
 4. Packaging con Capacitor per iOS e Android
    - GPS in background, fotocamera, notifiche push.
@@ -87,10 +92,12 @@ Si sostiene con pubblicità non invasiva.
 - Accesso, prima fase: email/password, Google e accesso anonimo. Apple e Facebook rinviati.
 - Allegati: volti sfocati in automatico sul dispositivo, targhe sfocate a mano in moderazione, video e audio mai pubblici (solo moderatori).
 - Canali: app iOS e Android sugli store più versione web (mobile e desktop).
+- Build: Vite.
+- Condivisione con terzi via API REST e SFTP (requisito 2): rinviata finché non c'è un destinatario concreto. Resta l'export CSV/JSON anonimizzato.
+- Flusso di lavoro: sviluppo su branch separato, una pull request per blocco, il merge su `main` lo fa Roberto.
 
 ## Decisioni aperte (chiedere prima di procedere)
-- Build con Vite o file separati senza build.
-- Condivisione con terzi via API REST e SFTP (requisito 2): chi sono i destinatari e se serve davvero.
+- Hosting della versione web: proposto Vercel (account già esistente), con anteprima per ogni pull request. Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
 
 ## Modo di lavorare
 - Prima di scrivere codice, raccogliere i dettagli e fare domande mirate.
