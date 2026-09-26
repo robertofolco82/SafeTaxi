@@ -136,7 +136,25 @@ Per aggiornare la funzione sul progetto remoto: `npx supabase functions deploy r
 
 Per rendere moderatore un utente: **SQL Editor** → `update public.profiles set role = 'moderatore' where id = '<id utente>';`
 
+### News dal settore
+
+La funzione `refresh-news` legge i feed RSS di Google News (ricerca "taxi, tassisti, NCC, radiotaxi" sulle testate italiane) e di Consumerismo No Profit, tiene solo le notizie pertinenti (esclusi taxi acquei, film, videogiochi e omonimi) degli ultimi 30 giorni e le salva con `save_news`: solo titolo, testata, data e link all'articolo originale, niente testo né immagini. Fonti e filtro in `supabase/functions/_shared/news.js` (testati con feed reali in `tests/fixtures/`).
+
+La funzione non richiede chiavi (`verify_jwt = false`): il database accetta al massimo un aggiornamento ogni 15 minuti (`news_refresh_due`). Sul progetto remoto la chiama ogni ora un job pianificato, da creare una volta sola nell'editor SQL (non è in una migrazione perché contiene l'indirizzo del progetto):
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+select cron.schedule('refresh-news', '7 * * * *', $$
+  select net.http_post(url := 'https://emgookqbvrehcroxpypx.supabase.co/functions/v1/refresh-news',
+    headers := '{"Content-Type": "application/json"}'::jsonb, body := '{}'::jsonb)
+$$);
+```
+
+In locale la funzione non raggiunge i feed se la rete passa da un proxy con certificato proprio: la lettura dei feed si verifica con i test unitari e sul progetto remoto.
+
 ## Servizi esterni
 
 - Mappe: tile di OpenStreetMap. Per la produzione serve un fornitore commerciale, le tile pubbliche non sono pensate per uso intensivo.
 - Ricerca indirizzi: Nominatim, da usare nel rispetto dei suoi limiti (massimo una richiesta al secondo).
+- News: feed RSS di Google News e di Consumerismo No Profit (solo titoli con link alla fonte). Da verificare prima del lancio: i termini di Google sull'uso dei feed di Google News in un'app con pubblicità.

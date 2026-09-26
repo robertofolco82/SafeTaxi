@@ -178,6 +178,13 @@ export function createSupabaseBackend(url, key){
       await sb.auth.signOut({scope: 'local'});
       session = null;
     },
+    // News dai feed RSS (aggiornate ogni ora dalla funzione refresh-news): solo titolo, testata, data e link.
+    async loadNews(){
+      const {data, error} = await sb.from('news').select('title,source_name,url,published_at,feed,is_placeholder')
+        .eq('is_placeholder', false).order('published_at', {ascending:false, nullsFirst:false}).limit(40);
+      if (error) fail(error);
+      return data.map(n => ({title:n.title, source:n.source_name, url:n.url, publishedAt:n.published_at ? Date.parse(n.published_at) : null, feed:n.feed}));
+    },
     async role(){ return userFrom(session) ? (await call('my_role')) || 'utente' : 'utente'; },
     async submitDriverReply(reportId, identifier, contact, body){
       await ensureSession();

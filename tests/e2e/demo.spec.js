@@ -119,3 +119,10 @@ test('foto allegata: metadati rimossi e volto sfocato sul dispositivo', async ({
   await page.locator('#thumbs .thumb button').click();
   await expect(page.locator('#thumbs .thumb')).toHaveCount(0);
 });
+
+test('news in modalità demo: solo esempi segnaposto, senza link', async ({page}) => {
+  await page.getByRole('button', {name: 'News'}).click();
+  await expect(page.locator('#newsList .news-item')).toHaveCount(3);
+  await expect(page.locator('#newsBadge')).toBeVisible();
+  await expect(page.locator('#newsList a')).toHaveCount(0);
+});
