@@ -81,3 +81,6 @@ nav.tabs button.on{color:var(--pri);font-weight:700}
 .hidden{display:none!important}
 .powersave *{animation:none!important;transition:none!important}
 .banner{background:#fef3c7;color:#92400e;font-size:12px;padding:8px 14px}
+.thumb .faces{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:8px;padding:1px 5px;font-size:10px}
+.feed-photos{display:flex;gap:6px;margin-top:6px}
+.feed-photos img{width:72px;height:72px;object-fit:cover;border-radius:8px}

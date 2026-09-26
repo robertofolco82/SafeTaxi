@@ -8,3 +8,4 @@ Thumbs.db
 *.log
 test-results/
 playwright-report/
+public/mediapipe/

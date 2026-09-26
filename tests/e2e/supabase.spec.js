@@ -1,12 +1,14 @@
 import {test, expect} from '@playwright/test';
 import {execSync} from 'node:child_process';
+import {readFileSync} from 'node:fs';
+import {createClient} from '@supabase/supabase-js';
 
 // Test contro lo stack Supabase locale (`npx supabase start`): database, autenticazione ed email (Mailpit).
 // La chiave di servizio locale serve solo a simulare il moderatore dal "pannello".
-let API, MAIL, SERVICE;
+let API, MAIL, SERVICE, PUBLISHABLE;
 test.beforeAll(() => {
   const status = JSON.parse(execSync('npx supabase status -o json', {encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore']}));
-  ({API_URL: API, MAILPIT_URL: MAIL, SERVICE_ROLE_KEY: SERVICE} = status);
+  ({API_URL: API, MAILPIT_URL: MAIL, SERVICE_ROLE_KEY: SERVICE, PUBLISHABLE_KEY: PUBLISHABLE} = status);
 });
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
 
@@ -22,6 +24,19 @@ async function lastEmailLink(to, subject){
   }
   throw new Error(`Nessuna email "${subject}" per ${to}`);
 }
+const serviceHeaders = () => ({apikey: SERVICE, Authorization: `Bearer ${SERVICE}`, 'Content-Type': 'application/json'});
+async function rest(path, init = {}){
+  const r = await fetch(`${API}/rest/v1/${path}`, {...init, headers: {...serviceHeaders(), ...(init.headers || {})}});
+  expect(r.ok, await r.clone().text()).toBe(true);
+  return r.status === 204 ? null : r.json();
+}
+// Piccolo file WAV (0,1 s di silenzio) per simulare una registrazione audio.
+function wav(){
+  const n = 800, b = Buffer.alloc(44 + n);
+  b.write('RIFF', 0); b.writeUInt32LE(36 + n, 4); b.write('WAVEfmt ', 8); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22);
+  b.writeUInt32LE(8000, 24); b.writeUInt32LE(8000, 28); b.writeUInt16LE(1, 32); b.writeUInt16LE(8, 34); b.write('data', 36); b.writeUInt32LE(n, 40); b.fill(128, 44);
+  return b;
+}
 async function moderate(description, status){
   const r = await fetch(`${API}/rest/v1/reports?description=eq.${encodeURIComponent(description)}`, {
     method: 'PATCH', body: JSON.stringify({status}),
@@ -32,7 +47,8 @@ async function moderate(description, status){
 test.beforeEach(async ({page, context}) => {
   page.errors = [];
   page.on('pageerror', e => page.errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') page.errors.push('console: ' + m.text()); });
+  // MediaPipe scrive in console come "errore" un messaggio informativo sul motore TensorFlow Lite: non è un errore.
+  page.on('console', m => { if (m.type() === 'error' && !/TensorFlow Lite XNNPACK/.test(m.text())) page.errors.push('console: ' + m.text()); });
   await context.route(u => !['127.0.0.1', 'localhost'].includes(u.hostname), route => {
     const url = new URL(route.request().url());
     if (url.hostname.endsWith('tile.openstreetmap.org')) return route.fulfill({contentType: 'image/png', body: PNG});
@@ -149,4 +165,63 @@ test('Google: il pulsante avvia il login OAuth di Supabase', async ({page}) => {
   expect(url.searchParams.get('provider')).toBe('google');
   expect(url.searchParams.get('redirect_to')).toBe('http://127.0.0.1:4174/');
   page.errors = [];  // la pagina di Supabase locale segnala che Google non è configurato in locale
+});
+
+test('allegati: foto ripulita e audio caricati, verificati dal server; la foto approvata compare nel feed', async ({page}) => {
+  const description = `Allegati ${Date.now()}: tassista al telefono per tutta la corsa, audio e foto.`;
+  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
+  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await page.setInputFiles('#micAudio', {name: 'registrazione.wav', mimeType: 'audio/wav', buffer: wav()});
+  await expect(page.locator('#thumbs .thumb')).toHaveCount(2);
+  await page.fill('#reportForm [name=name]', 'Paolo Neri');
+  await page.fill('#reportForm [name=licenza]', '5678');
+  await page.fill('#reportForm [name=targa]', 'PX' + String(Date.now()).slice(-3) + 'KK');
+  await page.selectOption('#reportCity', 'roma');
+  await page.selectOption('#reportType', 'comportamento');
+  await page.locator('#reportStars span').nth(1).click();
+  await page.fill('#reportForm [name=description]', description);
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('anonima inviata: in moderazione');
+  await expect(page.locator('#toast')).not.toContainText('Allegati non caricati');
+
+  const [report] = await rest(`reports?description=eq.${encodeURIComponent(description)}&select=id`);
+  const rows = await rest(`attachments?report_id=eq.${report.id}&select=id,kind,mime_type,exif_stripped,faces_blurred,faces_detected,is_public&order=kind`);
+  expect(rows.map(r => [r.kind, r.mime_type, r.exif_stripped, r.faces_blurred, r.faces_detected, r.is_public])).toEqual([
+    ['foto', 'image/jpeg', true, true, 1, false],
+    ['audio', 'audio/wav', false, false, null, false],
+  ]);
+
+  // Il moderatore pubblica la segnalazione e, dopo aver controllato le targhe, rende pubblica la foto.
+  await rest(`reports?id=eq.${report.id}`, {method: 'PATCH', body: JSON.stringify({status: 'pubblicata'}), headers: {Prefer: 'return=minimal'}});
+  await rest(`attachments?report_id=eq.${report.id}&kind=eq.foto`, {method: 'PATCH', body: JSON.stringify({plates_blurred: true, is_public: true}), headers: {Prefer: 'return=minimal'}});
+  await page.reload();
+  const item = page.locator('#feed .feed-item', {hasText: description.slice(0, 25)});
+  await expect(item.locator('.feed-photos img')).toHaveCount(1);
+  await expect.poll(() => item.locator('.feed-photos img').evaluate(img => img.complete && img.naturalWidth)).toBeGreaterThan(0);
+});
+
+test('il server rifiuta e cancella una foto che contiene ancora i metadati', async () => {
+  const sb = createClient(API, PUBLISHABLE, {auth: {persistSession: false}});
+  const {error: authError} = await sb.auth.signInAnonymously();
+  expect(authError).toBeNull();
+  const {data: reportId, error} = await sb.rpc('submit_report', {p_city: 'roma', p_type: 'altro', p_rating: 2,
+    p_description: 'Prova di caricamento diretto senza passare dall\'app.', p_reporter_name: 'Test Diretto',
+    p_plate: 'ZT' + String(Date.now()).slice(-3) + 'QQ', p_license: '999'});
+  expect(error).toBeNull();
+  const path = `${reportId}/${crypto.randomUUID()}.jpg`;
+  const up = await sb.storage.from('attachments').upload(path, readFileSync('tests/fixtures/volto-con-gps.jpg'), {contentType: 'image/jpeg'});
+  expect(up.error).toBeNull();
+  const res = await sb.functions.invoke('register-attachment', {body: {report_id: reportId, path, kind: 'foto', faces_detected: 0}});
+  expect(res.error?.context?.status).toBe(422);
+  expect((await res.error.context.json()).error).toContain('EXIF');
+  expect(await rest(`attachments?report_id=eq.${reportId}&select=id`)).toEqual([]);
+  const still = await fetch(`${API}/storage/v1/object/attachments/${path}`, {headers: serviceHeaders()});
+  expect(still.ok).toBe(false);
+  // E un altro utente non può registrare file sulla segnalazione altrui.
+  const other = createClient(API, PUBLISHABLE, {auth: {persistSession: false}});
+  await other.auth.signInAnonymously();
+  const forbidden = await other.functions.invoke('register-attachment', {body: {report_id: reportId, path, kind: 'foto'}});
+  expect(forbidden.error?.context?.status).toBe(403);
 });

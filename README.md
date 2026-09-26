@@ -63,7 +63,7 @@ L'accesso (email con conferma, Google, anonimo) richiede alcune impostazioni nei
 In locale serve Docker:
 
 ```bash
-npx supabase start -x studio,imgproxy,edge-runtime,logflare,vector,supavisor,realtime,storage-api,postgres-meta
+npx supabase start -x studio,imgproxy,logflare,vector,supavisor,realtime,postgres-meta
                          # avvia database, autenticazione, API ed email di prova (Mailpit su http://127.0.0.1:54324)
 npm run test:db          # test pgTAP su regole di accesso, limiti anti-fake, moderazione e punti
 npx supabase db reset    # riparte da zero (riapplica migrazioni e seed)
@@ -82,6 +82,16 @@ Finché non c'è la pagina di moderazione nell'app:
 1. Su supabase.com apri il progetto, poi **Table Editor → reports** e filtra `status = in_moderazione`.
 2. Per pubblicare, imposta `status` a `pubblicata`; per rifiutare, `rifiutata` e scrivi il motivo in `rejection_reason`.
 3. Nome del segnalatore, targa e licenza sono nella tabella `reports_private` dello schema `private` (selettore dello schema in alto a sinistra).
+4. Allegati: **Storage → attachments →** cartella con l'id della segnalazione. Per pubblicare una foto: controlla che non ci siano targhe leggibili (lo strumento per sfocarle arriverà con la pagina di moderazione), poi in **Table Editor → attachments** imposta `plates_blurred = true` e `is_public = true`.
+
+### Allegati
+
+- Le foto sono elaborate sul telefono prima dell'invio (`src/media/photo.js`): riesportate in JPEG senza metadati (EXIF, GPS, XMP) e con i volti pixelati da MediaPipe (modello in `public/models/`, motore WebAssembly copiato in `public/mediapipe/` dalla build e scaricato solo alla prima foto).
+- I file vanno nel bucket privato `attachments` (`<id segnalazione>/<nome casuale>`). La funzione `supabase/functions/register-attachment` li verifica (autore, formato, dimensione, assenza di metadati nelle foto) e li registra; una foto con metadati viene cancellata.
+- Video e audio restano visibili solo ai moderatori. Una foto diventa pubblica solo quando il moderatore imposta `plates_blurred = true` e `is_public = true` su `attachments` (il database rifiuta le altre combinazioni).
+- Il riconoscimento dei volti è pensato per volti vicini e di medie dimensioni: il moderatore controlla sempre la foto prima di pubblicarla.
+
+Per aggiornare la funzione sul progetto remoto: `npx supabase functions deploy register-attachment --project-ref emgookqbvrehcroxpypx` (richiede `npx supabase login`).
 
 Per rendere moderatore un utente: **SQL Editor** → `update public.profiles set role = 'moderatore' where id = '<id utente>';`
 

@@ -6,7 +6,8 @@ const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR
 test.beforeEach(async ({page, context}) => {
   page.errors = [];
   page.on('pageerror', e => page.errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') page.errors.push('console: ' + m.text()); });
+  // MediaPipe scrive in console come "errore" un messaggio informativo sul motore TensorFlow Lite: non è un errore.
+  page.on('console', m => { if (m.type() === 'error' && !/TensorFlow Lite XNNPACK/.test(m.text())) page.errors.push('console: ' + m.text()); });
   await context.route(u => !['127.0.0.1', 'localhost'].includes(u.hostname), route => {
     const url = new URL(route.request().url());
     if (url.hostname.endsWith('tile.openstreetmap.org')) return route.fulfill({contentType: 'image/png', body: PNG});
@@ -102,4 +103,19 @@ test('export dati aperti senza targhe né licenze', async ({page}) => {
   const csv = await (await download.createReadStream()).toArray().then(c => Buffer.concat(c).toString());
   expect(csv.split('\n')[0]).not.toMatch(/targa|licenza|nome/);
   expect(csv).not.toContain('AB123CD');
+});
+
+test('foto allegata: metadati rimossi e volto sfocato sul dispositivo', async ({page}) => {
+  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
+  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await expect(page.locator('#thumbs .thumb')).toHaveAttribute('title', /1 volto sfocato/);
+  const out = await page.locator('#thumbs img').evaluate(async img => {
+    const b = new Uint8Array(await (await fetch(img.src)).arrayBuffer());
+    const head = String.fromCharCode(...b.subarray(0, 4096));
+    return {jpeg: b[0] === 0xff && b[1] === 0xd8, exif: head.includes('Exif'), camera: head.includes('FotocameraDiProva')};
+  });
+  expect(out).toEqual({jpeg: true, exif: false, camera: false});
+  await page.locator('#thumbs .thumb button').click();
+  await expect(page.locator('#thumbs .thumb')).toHaveCount(0);
 });
