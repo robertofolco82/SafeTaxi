@@ -109,6 +109,8 @@ Si sostiene con pubblicità non invasiva.
 - Hosting della versione web: Vercel (produzione `https://safetaxi-nu.vercel.app`), collegato al repository (deploy automatico da `main` e anteprima per ogni pull request). Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
 - Punti: assegnati alla pubblicazione della segnalazione (dopo la moderazione), non all'invio.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
+- Età minima: 18 anni (dichiarazione nel modulo di segnalazione, nota nell'accesso, termini d'uso).
+- Accuse di reato: Safe Taxi valuta il servizio, non è un servizio pubblico né un canale di denuncia; nel modulo un avviso rimanda a forze dell'ordine e 112, e le segnalazioni con accuse di reato non si pubblicano. Parere legale ancora da chiedere (decisione aperta).
 - News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)

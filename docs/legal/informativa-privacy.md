@@ -85,7 +85,7 @@ video e audio mai pubblici; link di condivisione della corsa salvati solo come i
 
 ## 8. Età minima
 
-[PROPOSTA: 18 anni per inviare segnalazioni; 14 anni per l'uso dell'app (art. 2-quinquies Codice privacy).]
+L'app è riservata ai maggiori di 18 anni (dichiarazione richiesta all'invio di una segnalazione).
 
 ## 9. Modifiche
 

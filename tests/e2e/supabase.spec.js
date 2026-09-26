@@ -429,7 +429,7 @@ test('corsa verificata: la corsa registrata dal GPS dà il bollino alla valutazi
 
   // Corsa vera (GPS del browser simulato da Playwright), con la targa indicata prima di partire.
   await page.getByRole('button', {name: /Corsa/}).click();
-  await page.fill('#lookupInput', 'AB123CD');
+  await page.fill('#lookupInput', 'CV' + String(stamp).slice(-3) + 'ZZ');  // targa propria: non altera i rating degli altri test
   await page.locator('#rideBtn').click();
   await expect(page.locator('#rideVerify')).toContainText('Corsa registrata per il bollino');
   const ride = async () => (await rest('rides?select=id,pings,distance_m,last_lat,report_id&order=started_at.desc&limit=1'))[0];

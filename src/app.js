@@ -1095,7 +1095,7 @@ async function init(){
   loadDB(); initBattery(); initReportForm(); initBook();
   $('#loginNote').textContent = isLocal()
     ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
-    : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating.';
+    : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating. Safe Taxi è riservata ai maggiori di 18 anni.';
  $('#cityList').innerHTML = Object.values(CITIES).map(c => '<option value="' + c.n + '">').join('');
  $('#citySearch').addEventListener('change', searchCity);
  $('#shareText').addEventListener('input', () => { shareEdited = true; });

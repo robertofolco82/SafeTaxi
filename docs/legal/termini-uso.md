@@ -3,6 +3,10 @@
 > **BOZZA — DA VERIFICARE CON UN LEGALE PRIMA DELLA PUBBLICAZIONE.** Non è ancora mostrata nell'app.
 > I campi tra parentesi quadre vanno completati.
 
+## 0. Età minima
+
+Safe Taxi è riservata ai maggiori di 18 anni.
+
 ## 1. Chi fornisce il servizio
 
 Safe Taxi è fornita da [NOME / RAGIONE SOCIALE, INDIRIZZO, EMAIL] ("noi"). Punto di contatto unico per utenti
@@ -35,6 +39,16 @@ moderatore. Scrivendo una segnalazione dichiari che:
 
 Limiti contro gli abusi: 5 segnalazioni e 10 valutazioni ogni 24 ore; la stessa targa una volta ogni 30 giorni.
 Come verifichiamo le recensioni: pagina "Come verifichiamo le recensioni" nell'app.
+
+### Safe Taxi non è un canale di denuncia
+
+Safe Taxi è un'app di valutazione della qualità del servizio, non un servizio pubblico né un canale per
+denunciare reati. Le segnalazioni non vengono trasmesse alle autorità e non sostituiscono una denuncia o un
+esposto: chi ritiene di aver subito un reato deve rivolgersi alle forze dell'ordine o alla Polizia Locale
+(in emergenza, 112). Ciascun autore è responsabile di ciò che scrive. Le segnalazioni che contengono accuse di
+reato non vengono pubblicate o vengono rimosse. [NOTA PER IL LEGALE: questa clausola informa l'utente ma non
+esclude da sola la responsabilità del gestore per i contenuti pubblicati dopo la moderazione; la tutela effettiva
+viene dalla moderazione, vedi DPIA rischio R1.]
 
 ## 5. Punti e premi
 
