@@ -13,7 +13,7 @@ import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
-import {publicBase, openExternal} from './native/platform.js';
+import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
@@ -141,11 +141,17 @@ function openTab(name){
   if (name === 'mappa' && !italyMap) initItalyMap();
   if (name === 'profilo') renderProfile();
   if (name === 'segnala') updateAnonNotice();
+  if (name === 'news') renderNews();
   if (name === 'moderazione') renderModeration();
   setTimeout(() => { [homeMap, rideMap, italyMap].forEach(m => m && m.invalidateSize()); }, 80);
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
 function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+// Nell'app nativa i link esterni (news) si aprono fuori dalla WebView.
+document.addEventListener('click', e => {
+  const a = e.target.closest && e.target.closest('a[data-ext]');
+  if (a && isNative()) { e.preventDefault(); openExternal(a.href); }
+});
 document.addEventListener('click', e => { const t = e.target; if (t.classList && t.classList.contains('modal') && t.id !== 'm-confirm') t.classList.remove('open'); });
 function confirmDialog(title, text, ok){
   return new Promise(res => {
@@ -1003,12 +1009,21 @@ async function saveBlur(){
 }
 
 /* ================= NEWS ================= */
-function renderNews(){
-  const items = [
-    {t:'Esempio · Nuovo bando comunale per licenze taxi', s:'Fonte da configurare (comunicati dei Comuni)'},
-    {t:'Esempio · Sciopero di categoria annunciato', s:'Fonte da configurare (agenzie di stampa)'},
-    {t:'Esempio · Nuove tariffe approvate dalla Giunta', s:'Fonte da configurare (albo pretorio)'}];
- $('#newsList').innerHTML = items.map(n => '<div class="card"><span class="badge b-demo">SEGNAPOSTO</span><h3 style="margin-top:6px">' + esc(n.t) + '</h3><p class="muted">' + esc(n.s) + '</p></div>').join('');
+// Solo titolo, testata e data, con il link all'articolo originale (si apre sul sito della fonte).
+let newsLoaded = 0;
+async function renderNews(){
+  const box = $('#newsList');
+  if (Date.now() - newsLoaded < 10 * 60000) return;
+  if (!newsLoaded) box.innerHTML = '<div class="card muted">Carico le news…</div>';
+  let items;
+  try { items = await backend.loadNews(); newsLoaded = Date.now(); }
+  catch(e) { box.innerHTML = '<div class="card muted">News non disponibili: ' + esc(e.message) + '</div>'; return; }
+  $('#newsBadge').classList.toggle('hidden', !items.some(n => n.placeholder));
+  box.innerHTML = items.length ? '<div class="card">' + items.map(n => n.placeholder
+    ? '<div class="news-item"><span class="badge b-demo">SEGNAPOSTO</span><b>' + esc(n.title) + '</b></div>'
+    : '<a class="news-item" href="' + esc(n.url) + '" target="_blank" rel="noopener noreferrer" data-ext><b>' + esc(n.title) + '</b>' +
+      '<span class="muted">' + esc(n.source) + (n.publishedAt ? ' · ' + ago(n.publishedAt) : '') + (n.feed === 'google_news' ? ' · via Google News' : '') + '</span></a>'
+  ).join('') + '</div>' : '<div class="card muted">Nessuna notizia sul settore negli ultimi 30 giorni.</div>';
 }
 
 /* ================= AVVIO ================= */
@@ -1027,7 +1042,7 @@ async function init(){
   backend = await createBackend(() => DB, saveDB);
   const token = liveToken(location.search);
   if (token) { DB = {powerSave:false}; return startLiveViewer(token); }
-  loadDB(); initBattery(); initReportForm(); initBook(); renderNews();
+  loadDB(); initBattery(); initReportForm(); initBook();
   $('#loginNote').textContent = isLocal()
     ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
     : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating.';

@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><rss version="2.0"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:atom="http://www.w3.org/2005/Atom"
+	xmlns:sy="http://purl.org/rss/1.0/modules/syndication/"
+	xmlns:slash="http://purl.org/rss/1.0/modules/slash/"
+	>
+
+<channel>
+	<title>CONSUMERISMO.it</title>
+	<atom:link href="https://www.consumerismo.it/feed" rel="self" type="application/rss+xml" />
+	<link>https://www.consumerismo.it/</link>
+	<description>Il Giornale Indipendente dei Consumatori</description>
+	<lastBuildDate>Sat, 26 Sep 2026 15:17:29 +0000</lastBuildDate>
+	<language>it-IT</language>
+	<sy:updatePeriod>
+	hourly	</sy:updatePeriod>
+	<sy:updateFrequency>
+	1	</sy:updateFrequency>
+	
+
+<image>
+	<url>https://www.consumerismo.it/storage/2021/09/cropped-favicon-32x32.png</url>
+	<title>CONSUMERISMO.it</title>
+	<link>https://www.consumerismo.it/</link>
+	<width>32</width>
+	<height>32</height>
+</image> 
+	<item>
+		<title>Taxi a Roma, Consumerismo sostiene assessore Onorato</title>
+		<link>https://www.consumerismo.it/taxi-a-roma-consumerismo-sostiene-assessore-onorato-99209.html</link>
+		
+		<dc:creator><![CDATA[Redazione]]></dc:creator>
+		<pubDate>Fri, 25 Sep 2026 16:32:08 +0000</pubDate>
+				<category><![CDATA[Trasporti]]></category>
+		<category><![CDATA[Treni, navi, bus, taxi e NCC]]></category>
+		<guid isPermaLink="false">https://www.consumerismo.it/?p=99209</guid>
+
+					
+										
+					
+		
+		
+			</item>
+<item>
+		<title>Oasis a Roma, Consumerismo: “Il codice non si compra. Chi lo vende online sta vendendo aria”</title>
+		<link>https://www.consumerismo.it/oasis-a-roma-consumerismo-il-codice-non-si-compra-chi-lo-vende-online-sta-vendendo-aria-99221.html</link>
+		
+		<dc:creator><![CDATA[Giovanni Riccobono]]></dc:creator>
+		<pubDate>Sat, 26 Sep 2026 15:17:29 +0000</pubDate>
+				<category><![CDATA[E-commerce, servizi digitali e piattaforme]]></category>
+		<category><![CDATA[AGCOM]]></category>
+		<category><![CDATA[Concerti]]></category>
+		<category><![CDATA[Oasis]]></category>
+		<guid isPermaLink="false">https://www.consumerismo.it/?p=99221</guid>
+
+					
+										
+					
+		
+		
+			</item>
+<item>
+		<title>La Borsa della Spesa &#8211; alici giù del 31,6% e buoni prezzi sui banchi del pesce</title>
+		<link>https://www.consumerismo.it/la-borsa-della-spesa-alici-giu-del-316-e-buoni-prezzi-sui-banchi-del-pesce-99199.html</link>
+		
+		<dc:creator><![CDATA[Redazione]]></dc:creator>
+		<pubDate>Fri, 25 Sep 2026 10:51:09 +0000</pubDate>
+				<category><![CDATA[La Borsa della Spesa]]></category>
+		<guid isPermaLink="false">https://www.consumerismo.it/?p=99199</guid>
+
+					
+										
+					
+		
+		
+			</item>
+</channel></rss>

@@ -468,3 +468,23 @@ test('corsa verificata: la corsa registrata dal GPS dà il bollino alla valutazi
   await page.getByRole('button', {name: 'Come verifichiamo le recensioni'}).first().click();
   await expect(page.locator('#m-verifica')).toContainText('almeno 3 minuti e 500 metri');
 });
+
+test('news: titoli dai feed con testata, data e link all\'articolo originale', async ({page}) => {
+  const stamp = Date.now();
+  const saved = await rest('rpc/save_news', {method: 'POST', body: JSON.stringify({p_items: [
+    {title: `Taxi, nuove tariffe approvate ${stamp}`, source_name: 'Testata di prova', url: `https://example.com/taxi-${stamp}`,
+     published_at: new Date(stamp - 2 * 3600e3).toISOString(), feed: 'google_news'},
+    {title: `Tassisti e consumatori, incontro in Comune ${stamp}`, source_name: 'Consumerismo No Profit', url: `https://example.org/tassisti-${stamp}`,
+     published_at: new Date(stamp - 3600e3).toISOString(), feed: 'consumerismo'}]})});
+  expect(saved).toBe(2);
+  await page.getByRole('button', {name: 'News'}).click();
+  const first = page.locator('#newsList a.news-item').first();
+  await expect(first).toContainText(`Tassisti e consumatori, incontro in Comune ${stamp}`);
+  await expect(first).toContainText('Consumerismo No Profit');
+  await expect(first).toHaveAttribute('href', `https://example.org/tassisti-${stamp}`);
+  await expect(first).toHaveAttribute('target', '_blank');
+  const google = page.locator('#newsList a.news-item', {hasText: `Taxi, nuove tariffe approvate ${stamp}`});
+  await expect(google).toContainText('Testata di prova · 2 h fa · via Google News');
+  await expect(page.locator('#newsBadge')).toBeHidden();
+  await expect(page.locator('#newsList')).not.toContainText('Esempio ·');
+});

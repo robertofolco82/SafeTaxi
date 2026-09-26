@@ -121,3 +121,7 @@ nav.tabs button.on{color:var(--pri);font-weight:700}
 .live-mode .app,.live-mode nav.tabs,.live-mode .sos-fab{display:none}
 #liveView{max-width:480px;margin:0 auto}
 .live-dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--st-accent);margin-right:6px;vertical-align:1px}
+.news-item{display:flex;flex-direction:column;gap:3px;padding:10px 0;border-bottom:1px solid var(--line);color:var(--txt);text-decoration:none}
+.news-item:last-child{border-bottom:0}
+.news-item b{font-family:var(--st-font-display);font-size:14px;line-height:1.35}
+a.news-item:hover b{text-decoration:underline}

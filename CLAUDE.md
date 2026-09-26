@@ -19,7 +19,7 @@ Si sostiene con pubblicità non invasiva.
   - Dati personali (nome segnalatore, targa, licenza) solo in `private.reports_private`. Scritture dei client solo tramite funzioni (`submit_report`, `submit_ride_rating`).
 - Test: `npm test` (Vitest, regole in `src/lib`), `npm run test:e2e` (Playwright: progetto `demo` senza backend e `supabase` contro lo stack locale, con registrazione ed email via Mailpit) e `npm run test:db` (pgTAP). La CI su GitHub Actions li esegue a ogni push e pull request.
 - Prima di consegnare una modifica: `npm test`, `npm run build`, `npm run test:e2e` e, se tocchi il database, `npm run test:db` devono passare.
-- Tutti i dati sono DEMO: segnalazioni generate con seed fisso, licenze/domanda/tariffe per città, rating delle cooperative. Le news sono segnaposto.
+- Tutti i dati sono DEMO: segnalazioni generate con seed fisso, licenze/domanda/tariffe per città, rating delle cooperative. Le news sono reali (feed RSS, solo titoli con link alla fonte); in modalità demo locale restano segnaposto.
 
 ## Requisiti funzionali
 1. Segnalazione
@@ -52,7 +52,7 @@ Si sostiene con pubblicità non invasiva.
     - Bollo RECOMMENDED: rating ≥ 4,0 e almeno 20 recensioni verificate in 12 mesi, con nota esplicativa in pagina.
     - Filtri: Recommended, 24/7, aeroporti, app.
     - Rating esterni (TrustPilot/Google) solo se disponibili tramite API ufficiali.
-11. News sul settore taxi: aggregatore RSS, sempre con link alla fonte.
+11. News sul settore taxi: aggregatore RSS, sempre con link alla fonte. Fonti: Google News (ricerca taxi/tassisti/NCC) e Consumerismo No Profit; solo fonti gratuite dove basta citare la fonte: si mostrano titolo, testata, data e link, mai testo o immagini.
 12. Batteria: GPS solo quando serve, risparmio energetico manuale e automatico sotto il 20%.
 
 ## Regole non negoziabili
@@ -73,6 +73,7 @@ Si sostiene con pubblicità non invasiva.
 ## Da verificare prima del rilascio
 - Numeri di telefono delle cooperative (Roma, Milano, Torino, Bologna, Firenze) e censimento delle altre città.
 - Licenze per città (Comuni), tariffe (delibere comunali), redditi medi dichiarati (MEF).
+- Termini di Google sull'uso dei feed RSS di Google News in un'app con pubblicità (se non compatibili: passare ai feed diretti delle testate).
 - Fornitore delle mappe per la produzione: le tile pubbliche di OSM non sono pensate per uso intensivo. Rispettare i limiti d'uso di Nominatim.
 
 ## Roadmap
@@ -105,6 +106,7 @@ Si sostiene con pubblicità non invasiva.
 - Hosting della versione web: Vercel (produzione `https://safetaxi-nu.vercel.app`), collegato al repository (deploy automatico da `main` e anteprima per ogni pull request). Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
 - Punti: assegnati alla pubblicazione della segnalazione (dopo la moderazione), non all'invio.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
+- News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)
 - Limite di consultazione del rating per targa (`get_driver_rating` è pubblica): da valutare contro la raccolta massiva di targhe.
@@ -117,6 +119,7 @@ Si sostiene con pubblicità non invasiva.
 ## Modo di lavorare
 - Autonomia: si procede da un blocco al successivo della roadmap senza chiedere conferma. Le scelte tecniche con una soluzione ragionevole si prendono e si dichiarano nel riepilogo e nella pull request.
 - Si chiede prima di procedere solo per: costi (piani a pagamento, servizi nuovi), azioni irreversibili o su dati reali/produzione, credenziali e segreti, testi legali, pubblicazione sugli store, e le voci in "Decisioni aperte".
+- Supabase: migrazioni, funzioni, SQL, estensioni, job pianificati e impostazioni del progetto si eseguono senza chiedere autorizzazione (deciso da Roberto). Resta da chiedere solo il passaggio a piani a pagamento.
 - Prima di scrivere codice, raccogliere i dettagli; fare domande mirate solo quando la risposta cambia davvero il lavoro.
 - Comunicazione diretta e critica; dire chiaramente cosa non è possibile.
 - Modifiche incrementali verificate eseguendo il codice. Niente riscritture totali non richieste.

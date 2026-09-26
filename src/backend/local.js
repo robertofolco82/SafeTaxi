@@ -42,6 +42,11 @@ export function createLocalBackend(getState, save){
     async updatePassword(){},
     async signOut(){ getState().user = null; save(); },
     async role(){ return 'utente'; },
+    // In modalità demo niente feed: solo esempi segnaposto, senza link.
+    async loadNews(){ return [
+      {title:'Esempio · Nuovo bando comunale per licenze taxi', source:'Segnaposto', placeholder:true},
+      {title:'Esempio · Sciopero di categoria annunciato', source:'Segnaposto', placeholder:true},
+      {title:'Esempio · Nuove tariffe approvate dalla Giunta', source:'Segnaposto', placeholder:true}]; },
     async startRide(){ return null; },
     hasSession: () => !!getState().user,
     async deleteAccount(){ const s = getState(); s.user = null; s.points = 0; s.ledger = []; save(); },
