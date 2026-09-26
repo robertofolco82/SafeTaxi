@@ -84,7 +84,8 @@ Si sostiene con pubblicità non invasiva.
    - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
    - API ed export SFTP: rinviati.
 3. ✅ Tracking live: link temporaneo (`?live=<token>`, 3 ore, una condivisione attiva per utente); token salvato solo come impronta SHA-256; posizioni cancellate a fine corsa; pagina per chi riceve il link con aggiornamento ogni 8 secondi. Nel browser il GPS si ferma in background: serve l'app nativa (punto 4).
-4. Packaging con Capacitor per iOS e Android
+4. Packaging con Capacitor per iOS e Android (appId `it.safetaxi.app`, da confermare prima della pubblicazione: non si può cambiare dopo)
+   - ✅ 4a. Progetti `android/` e `ios/`, GPS durante la corsa anche a schermo spento (servizio in primo piano, senza "posizione sempre"), login e link email che tornano all'app (`it.safetaxi.app://auth`), link esterni fuori dalla WebView, invio posizioni del tracking live con HTTP nativo, APK Android e build iOS in CI.
    - GPS in background, fotocamera, notifiche push.
    - Requisiti store: cancellazione dell'account, dichiarazione sull'uso della posizione in background, sezione "sicurezza dei dati" di Google Play.
 5. Compliance: valutazione d'impatto privacy (DPIA), informativa, termini d'uso, procedura di segnalazione e rimozione prevista dal Digital Services Act, consenso per cookie e pubblicità.
@@ -98,13 +99,15 @@ Si sostiene con pubblicità non invasiva.
 - Canali: app iOS e Android sugli store più versione web (mobile e desktop).
 - Build: Vite.
 - Condivisione con terzi via API REST e SFTP (requisito 2): rinviata finché non c'è un destinatario concreto. Resta l'export CSV/JSON anonimizzato.
-- Flusso di lavoro: sviluppo su branch separato, una pull request per blocco, il merge su `main` lo fa Roberto.
+- Flusso di lavoro: sviluppo su branch separato, una pull request per blocco; Claude fa il merge su `main` quando tutti i controlli della CI sono verdi (autorizzato da Roberto).
 - Hosting della versione web: Vercel (produzione `https://safetaxi-nu.vercel.app`), collegato al repository (deploy automatico da `main` e anteprima per ogni pull request). Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
 - Punti: assegnati alla pubblicazione della segnalazione (dopo la moderazione), non all'invio.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
 
 ## Decisioni aperte (chiedere prima di procedere)
 - Limite di consultazione del rating per targa (`get_driver_rating` è pubblica): da valutare contro la raccolta massiva di targhe.
+- Notifiche push: servono un progetto Firebase (Android) e una chiave APNs con account Apple Developer (iOS).
+- Account sviluppatore per gli store: Apple Developer 99 $/anno, Google Play 25 $ una tantum.
 - CAPTCHA (Cloudflare Turnstile) per accessi anonimi e registrazioni: da aggiungere prima dell'apertura al pubblico.
 - SMTP per le email di Supabase (senza, arrivano solo agli indirizzi del team).
 - Protezione password compromesse (HaveIBeenPwned): richiede il piano Pro di Supabase.

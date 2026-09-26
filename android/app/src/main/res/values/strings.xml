@@ -1,0 +1,10 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Safe Taxi</string>
+    <string name="title_activity_main">Safe Taxi</string>
+    <string name="package_name">it.safetaxi.app</string>
+    <string name="custom_url_scheme">it.safetaxi.app</string>
+    <!-- Notifica fissa durante la corsa (plugin background-geolocation) -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Corsa in corso</string>
+    <string name="capacitor_background_geolocation_notification_color">#0f766e</string>
+</resources>

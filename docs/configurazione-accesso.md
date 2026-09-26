@@ -14,6 +14,7 @@ Supabase → progetto SafeTaxi → **Authentication → URL Configuration**:
   - `https://safetaxi-nu.vercel.app/**`
   - `https://safetaxi-*-robertofolco-3821.vercel.app/**` (anteprime delle pull request)
   - `http://localhost:5173/**` (sviluppo in locale)
+  - `it.safetaxi.app://**` (app Android e iOS: ritorno all'app dopo login e link delle email)
 
 Servono per tornare nell'app dopo la conferma dell'email, il recupero password e l'accesso con Google.
 

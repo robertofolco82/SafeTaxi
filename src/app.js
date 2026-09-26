@@ -11,6 +11,8 @@ import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
+import {publicBase, openExternal} from './native/platform.js';
+import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
 /* ================= UTILITY ================= */
@@ -81,13 +83,10 @@ function setPowerSave(v){ DB.powerSave = !!v; saveDB(); applyPower(); }
 
 /* ================= POSIZIONE ================= */
 let lastPos = null;
-function getPos(high){
-  return new Promise((res, rej) => {
-    if (!navigator.geolocation) return rej(new Error('Geolocalizzazione non supportata'));
- navigator.geolocation.getCurrentPosition(p => {
-      lastPos = {lat:p.coords.latitude, lng:p.coords.longitude, acc:p.coords.accuracy, ts:Date.now()}; res(lastPos);
-    }, e => rej(e), {enableHighAccuracy: !!high && !isPowerSave(), timeout:12000, maximumAge: isPowerSave() ? 300000 : 60000});
-  });
+async function getPos(high){
+  const p = await getPosition({highAccuracy: !!high && !isPowerSave(), maximumAge: isPowerSave() ? 300000 : 60000});
+  lastPos = {lat:p.lat, lng:p.lng, acc:p.acc, ts:Date.now()};
+  return lastPos;
 }
 let geoLast = {t:0, p:null, label:null};
 async function reverseGeocode(p, force){
@@ -142,7 +141,7 @@ function confirmDialog(title, text, ok){
 function openPrivacy(e){ e.preventDefault(); openModal('m-privacy'); }
 function acceptPrivacy(){ DB.privacyOk = true; saveDB(); closeModal('m-privacy'); }
 function storeUrl(key){ const s = STORES[key]; if (!s) return null; if (isIOS() && s.ios) return s.ios; if (isAndroid() && s.and) return s.and; return s.web; }
-function openStore(key){ const u = storeUrl(key); if (u) window.open(u, '_blank', 'noopener'); }
+function openStore(key){ const u = storeUrl(key); if (u) openExternal(u); }
 
 /* ================= HOME ================= */
 function renderThermo(){
@@ -238,16 +237,13 @@ async function toggleRide(){ if (ride) endRide(); else await startRide(false); }
 async function startRide(sim){
   if (!rideMap) rideMap = makeMap('rideMap', [41.9, 12.5], 6);
   if (rideLine) rideLine.setLatLngs([]);
-  ride = {start:Date.now(), path:[], km:0, watch:null, timer:null, simTimer:null, sim:!!sim, plate: normPlate($('#lookupInput').value)};
+  ride = {start:Date.now(), path:[], km:0, stopWatch:null, timer:null, simTimer:null, sim:!!sim, plate: normPlate($('#lookupInput').value)};
  $('#rideBtn').textContent = '⏹️ Termina corsa'; $('#rideBtn').classList.add('red');
  $('#rideState').textContent = 'In corso'; $('#rideState').className = 'badge b-ok';
   ride.timer = setInterval(updateRideStats, 1000);
   if (!sim) {
-    if (!navigator.geolocation) { toast('GPS non disponibile su questo dispositivo'); return; }
-    ride.watch = navigator.geolocation.watchPosition(
-      p => onRidePos({lat:p.coords.latitude, lng:p.coords.longitude}),
-      err => toast('Posizione non disponibile: ' + err.message),
- {enableHighAccuracy: !isPowerSave(), maximumAge: isPowerSave() ? 30000 : 5000, timeout:20000});
+    try { ride.stopWatch = await watchRide(onRidePos, err => toast(err.message), {powerSave: isPowerSave()}); }
+    catch(e) { toast(e.message); }
   }
 }
 function onRidePos(p){
@@ -275,7 +271,7 @@ function updateRideStats(){
 }
 function endRide(){
   if (!ride) return;
-  if (ride.watch != null) navigator.geolocation.clearWatch(ride.watch);
+  if (ride.stopWatch) ride.stopWatch();
  clearInterval(ride.timer); if (ride.simTimer) clearInterval(ride.simTimer);
   const r = ride; ride = null;
  $('#rideBtn').textContent = '▶️ Inizia corsa'; $('#rideBtn').classList.remove('red');
@@ -306,7 +302,7 @@ async function startLiveShare(){
   if (!liveShare) {
     try {
       const s = await backend.startLiveShare(ride.plate);
-      liveShare = {id:s.id, link:liveLink(location.origin, location.pathname, s.token), expires:Date.parse(s.expires_at)};
+      liveShare = {id:s.id, link:liveLink(publicBase(), '', s.token), expires:Date.parse(s.expires_at)};
       liveLast = null;
       if (ride.path.length) sendLive(ride.path[ride.path.length - 1], geoLast.label);
     } catch(e) { return toast(e.message); }
@@ -673,7 +669,7 @@ function sendShare(kind){
   if (kind === 'whatsapp') {
     let n = phone.replace(/^\+/, '').replace(/^00/, '');
     if (n && n.length === 10 && n.charAt(0) === '3') n = '39' + n;
-    window.open((n ? 'https://wa.me/' + n : 'https://wa.me/') + '?text=' + encodeURIComponent(text), '_blank', 'noopener');
+    openExternal((n ? 'https://wa.me/' + n : 'https://wa.me/') + '?text=' + encodeURIComponent(text));
   } else {
     location.href = 'sms:' + phone + (isIOS() ? '&' : '?') + 'body=' + encodeURIComponent(text);
   }
@@ -762,8 +758,9 @@ async function saveNewPassword(){
 async function afterLogin(){ closeModal('m-login'); $('#loginPwd').value = ''; await reloadData(); toast(isLocal() ? 'Accesso effettuato (simulato)' : 'Accesso effettuato'); }
 async function logout(){ await backend.signOut(); await reloadData(); }
 // Eventi di Supabase Auth: accesso dopo conferma email o Google, uscita, recupero password.
-function onAuthChange(event){
-  if (event === 'PASSWORD_RECOVERY') { openModal('m-newpwd'); return; }
+function onAuthChange(event, message){
+  if (event === 'AUTH_ERROR') { toast(message); return; }
+  if (event === 'PASSWORD_RECOVERY') { closeModal('m-login'); openModal('m-newpwd'); return; }
   if (event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'USER_UPDATED') reloadData();
 }
 function exportData(fmt){
