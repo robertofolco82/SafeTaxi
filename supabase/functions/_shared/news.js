@@ -16,10 +16,13 @@ export const NEWS_MAX_PER_RUN = 60;
 // Deve parlare di taxi o NCC (NCC solo in maiuscolo: "ncc" è anche altro)...
 const RELEVANT = /\b(taxi|radiotaxi|tassist[ai]|tassametro)\b/i;
 const RELEVANT_NCC = /\b(NCC|Ncc)\b/;
-// ...e non di taxi acquei, film, videogiochi o dell'omonima società svedese.
-const EXCLUDED = /taxi acque|taxi driver|crazy taxi|taxi bar\b|corone svedesi/i;
+// ...e non di taxi acquei (anche "in laguna"), film, videogiochi o dell'omonima società svedese.
+const EXCLUDED = /taxi acque|laguna|taxi driver|crazy taxi|taxi bar\b|corone svedesi|pista da bob/i;
+// Siti che ripubblicano i titoli di altre testate: si tiene l'originale.
+const EXCLUDED_SOURCES = ['agenziagiornalisticaopinione.it'];
+const MIN_TITLE = 25;
 
-export const isRelevant = title => (RELEVANT.test(title) || RELEVANT_NCC.test(title)) && !EXCLUDED.test(title);
+export const isRelevant = title => title.length >= MIN_TITLE && (RELEVANT.test(title) || RELEVANT_NCC.test(title)) && !EXCLUDED.test(title);
 
 const ENTITIES = {amp:'&', lt:'<', gt:'>', quot:'"', apos:"'", nbsp:' '};
 export function decodeXml(s){
@@ -51,7 +54,7 @@ export function selectNews(items, now){
   const seen = new Set(), out = [];
   const minDate = now - NEWS_MAX_AGE_DAYS * 864e5;
   for (const n of [...items].sort((a, b) => (b.publishedAt || 0) - (a.publishedAt || 0))) {
-    if (!n.title || !/^https?:\/\//.test(n.url) || !isRelevant(n.title)) continue;
+    if (!n.title || !/^https?:\/\//.test(n.url) || !isRelevant(n.title) || EXCLUDED_SOURCES.includes(n.source)) continue;
     if (n.publishedAt && (n.publishedAt < minDate || n.publishedAt > now + 864e5)) continue;
     const k = titleKey(n.title);
     if (seen.has(k) || seen.has(n.url)) continue;

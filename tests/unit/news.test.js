@@ -31,6 +31,17 @@ describe('news dal settore taxi', () => {
     expect(kept).toHaveLength(5);
   });
 
+  it('scarta titoli troppo corti, taxi in laguna e siti che ripubblicano titoli altrui', () => {
+    const base = {feed:'google_news', publishedAt:NOW - 3600e3};
+    const out = selectNews([
+      {...base, title:'taxi', source:'Blog', url:'https://a.it/1'},
+      {...base, title:'Coppia di sposi travolta dal taxi in laguna', source:'Testata', url:'https://a.it/2'},
+      {...base, title:'IL SOLE 24 ORE * ITALIA: «CARO BENZINA, TAXI E NCC CHIEDONO AIUTI»', source:'agenziagiornalisticaopinione.it', url:'https://a.it/3'},
+      {...base, title:'Taxi e Ncc chiedono carburante professionale', source:'Il Sole 24 ORE', url:'https://a.it/4'},
+    ], NOW);
+    expect(out.map(n => n.url)).toEqual(['https://a.it/4']);
+  });
+
   it('riconosce NCC solo in maiuscolo', () => {
     expect(isRelevant('Taxi e Ncc chiedono aiuti')).toBe(true);
     expect(isRelevant('Nuove licenze NCC a Guidonia')).toBe(true);
@@ -40,14 +51,14 @@ describe('news dal settore taxi', () => {
   it('toglie doppioni, notizie vecchie e link non validi', () => {
     const base = {source:'Test', feed:'google_news', publishedAt:NOW - 3600e3};
     const out = selectNews([
-      {...base, title:'Taxi, nuove tariffe', url:'https://a.it/1'},
-      {...base, title:'TAXI: nuove tariffe!', url:'https://b.it/2'},
-      {...base, title:'Taxi introvabili a Bari', url:'https://a.it/1'},
-      {...base, title:'Taxi a Milano', url:'javascript:alert(1)'},
-      {...base, title:'Taxi di un anno fa', url:'https://c.it/3', publishedAt:NOW - 365 * 864e5},
+      {...base, title:'Taxi, nuove tariffe approvate in Comune', url:'https://a.it/1'},
+      {...base, title:'TAXI: nuove tariffe approvate in Comune!', url:'https://b.it/2'},
+      {...base, title:'Taxi introvabili a Bari dopo le 22', url:'https://a.it/1'},
+      {...base, title:'Taxi a Milano, nuove corsie riservate', url:'javascript:alert(1)'},
+      {...base, title:'Taxi, la notizia di un anno fa', url:'https://c.it/3', publishedAt:NOW - 365 * 864e5},
     ], NOW);
     expect(out.map(n => n.url)).toEqual(['https://a.it/1']);
-    expect(out[0]).toMatchObject({title:'Taxi, nuove tariffe', source_name:'Test', feed:'google_news'});
+    expect(out[0]).toMatchObject({title:'Taxi, nuove tariffe approvate in Comune', source_name:'Test', feed:'google_news'});
   });
 
   it('decodifica entità e CDATA', () => {
