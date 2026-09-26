@@ -10,6 +10,7 @@ import {toOpenDataRows, toCsv} from './lib/opendata.js';
 import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
+import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
 /* ================= UTILITY ================= */
@@ -261,7 +262,7 @@ function onRidePos(p){
     if (!rideMarker) rideMarker = L.circleMarker([p.lat, p.lng], {radius:8, color:'#fff', weight:3, fillColor:'#dc2626', fillOpacity:1}).addTo(rideMap); else rideMarker.setLatLng([p.lat, p.lng]);
  rideMap.setView([p.lat, p.lng], 16);
   }
-  reverseGeocode(p, ride.sim).then(l => { if (l) $('#rideStreet').textContent = l; });
+  reverseGeocode(p, ride.sim).then(l => { if (l) $('#rideStreet').textContent = l; sendLive(p, l); });
 }
 function updateRideStats(){
   if (!ride) return;
@@ -280,6 +281,7 @@ function endRide(){
  $('#rideBtn').textContent = '▶️ Inizia corsa'; $('#rideBtn').classList.remove('red');
  $('#rideState').textContent = 'Conclusa'; $('#rideState').className = 'badge';
   lastRide = {durMin: Math.max(1, Math.round((Date.now() - r.start)/60000)), plate: r.plate, city: r.path.length ? nearestCity(r.path[0]).key : null};
+  stopLiveShare(false);
   openRating();
 }
 function simulateRide(){
@@ -293,6 +295,71 @@ function simulateRide(){
  onRidePos({lat:pts[i][0], lng:pts[i][1]}); i++;
     }, 2500);
   });
+}
+
+/* ================= TRACKING LIVE ================= */
+// Chi è in corsa crea un link temporaneo; le posizioni si inviano con parsimonia (vedi shouldSendPosition).
+let liveShare = null, liveLast = null;
+async function startLiveShare(){
+  if (isLocal()) return toast('La condivisione in tempo reale richiede il backend Supabase.');
+  if (!ride) return toast('Avvia prima la corsa: la posizione si condivide solo durante la corsa.');
+  if (!liveShare) {
+    try {
+      const s = await backend.startLiveShare(ride.plate);
+      liveShare = {id:s.id, link:liveLink(location.origin, location.pathname, s.token), expires:Date.parse(s.expires_at)};
+      liveLast = null;
+      if (ride.path.length) sendLive(ride.path[ride.path.length - 1], geoLast.label);
+    } catch(e) { return toast(e.message); }
+    renderLiveState();
+  }
+  openShare(false);
+}
+function sendLive(p, street){
+  if (!liveShare) return;
+  const now = Date.now();
+  if (!shouldSendPosition(liveLast, p, now, isPowerSave())) return;
+  liveLast = {lat:p.lat, lng:p.lng, ts:now};
+  backend.updateLiveShare(liveShare.id, p, street).catch(e => { if (/non attiva/.test(e.message)) stopLiveShare(false); });
+}
+async function stopLiveShare(notify = true){
+  if (!liveShare) return;
+  const id = liveShare.id; liveShare = null; renderLiveState();
+  try { await backend.endLiveShare(id); } catch(e) {}
+  if (notify) toast('Condivisione interrotta: la posizione non è più visibile.');
+}
+function renderLiveState(){
+  $('#liveState').innerHTML = liveShare ? '🔴 Condivisione attiva fino alle ' + hhmm(liveShare.expires) + ' · <button class="linkbtn" onclick="stopLiveShare()">Interrompi</button>' : '';
+}
+// Pagina di chi riceve il link: aggiornamento ogni 8 secondi finché la corsa è attiva.
+async function startLiveViewer(token){
+  document.body.classList.add('live-mode'); $('#liveView').classList.remove('hidden');
+  const map = makeMap('liveMap', [42.3, 12.6], 5);
+  let line = null, marker = null, centered = false, timer = null;
+  const ended = {conclusa:'La corsa è terminata. Per privacy la posizione non è più visibile.',
+    scaduta:'Il link è scaduto: la posizione non è più visibile.', non_trovata:'Link non valido: controlla di averlo aperto per intero.'};
+  const tick = async () => {
+    let d;
+    try { d = await backend.getLiveShare(token); } catch(e) { $('#liveStatus').textContent = 'Non raggiungibile'; return; }
+    const labels = {attiva:'In corso', conclusa:'Corsa conclusa', scaduta:'Link scaduto', non_trovata:'Link non valido'};
+    $('#liveStatus').textContent = labels[d.status] || d.status;
+    $('#liveStatus').className = 'badge' + (d.status === 'attiva' ? ' b-ok' : '');
+    if (d.status !== 'attiva') {
+      $('#liveStreet').textContent = ended[d.status] || ''; $('#liveInfo').textContent = '';
+      if (map) { if (line) map.removeLayer(line); if (marker) map.removeLayer(marker); }
+      clearInterval(timer); return;
+    }
+    $('#liveStreet').textContent = d.street || 'In attesa della prima posizione…';
+    $('#liveInfo').textContent = (d.updated_at ? 'Aggiornata ' + ago(Date.parse(d.updated_at)) : 'Nessuna posizione ancora') +
+      (d.plate_masked ? ' · Taxi ' + d.plate_masked : '') + ' · link valido fino alle ' + hhmm(Date.parse(d.expires_at));
+    if (map && d.points.length) {
+      const last = d.points[d.points.length - 1];
+      if (!line) line = L.polyline(d.points, {color:'#0f766e', weight:5}).addTo(map); else line.setLatLngs(d.points);
+      if (!marker) marker = L.circleMarker(last, {radius:9, color:'#fff', weight:3, fillColor:'#dc2626', fillOpacity:1}).addTo(map); else marker.setLatLng(last);
+      if (!centered) { map.setView(last, 16); centered = true; } else map.panTo(last);
+    }
+  };
+  await tick();
+  timer = setInterval(tick, 8000);
 }
 
 /* ================= RATING TASSISTA ================= */
@@ -595,6 +662,7 @@ function fillShareText(){
   const lines = [shareSOS ? 'Ciao' + nome + ', ho bisogno di aiuto.' : 'Ciao' + nome + ', ti avviso che sono su un taxi e ti condivido la mia posizione.'];
   if (geoLast.label) lines.push('📍 ' + geoLast.label);
   lines.push(shareP ? '🗺️ ' + mapsLink(shareP) : '🗺️ Posizione non disponibile');
+  if (liveShare) lines.push('🔴 Segui la corsa in tempo reale: ' + liveShare.link + ' (fino alle ' + hhmm(liveShare.expires) + ')');
   if (plate) lines.push('🚕 Taxi: ' + plate);
   lines.push('🕐 ' + t);
   lines.push(shareSOS ? 'Se non rispondo, chiama il 112.' : 'Se non mi senti entro 30 minuti, chiamami.');
@@ -878,6 +946,8 @@ const _renderCityStats = renderCityStats;
 renderCityStats = function(k){ $('#cityStats').dataset.city = k; _renderCityStats(k); };
 async function init(){
   backend = await createBackend(() => DB, saveDB);
+  const token = liveToken(location.search);
+  if (token) { DB = {powerSave:false}; return startLiveViewer(token); }
   loadDB(); initBattery(); initReportForm(); initBook(); renderNews();
   $('#loginNote').textContent = isLocal()
     ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
@@ -897,4 +967,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

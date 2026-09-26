@@ -83,7 +83,7 @@ Si sostiene con pubblicità non invasiva.
    - ✅ 2d. Pagina "Moderazione" nell'app (solo moderatori): coda con dati riservati, pubblica/rifiuta con motivo, sfocatura manuale delle targhe, approvazione delle foto, repliche dei tassisti (diritto di replica) verificate dal moderatore.
    - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
    - API ed export SFTP: rinviati.
-3. Tracking live: sessioni di condivisione con link temporaneo.
+3. ✅ Tracking live: link temporaneo (`?live=<token>`, 3 ore, una condivisione attiva per utente); token salvato solo come impronta SHA-256; posizioni cancellate a fine corsa; pagina per chi riceve il link con aggiornamento ogni 8 secondi. Nel browser il GPS si ferma in background: serve l'app nativa (punto 4).
 4. Packaging con Capacitor per iOS e Android
    - GPS in background, fotocamera, notifiche push.
    - Requisiti store: cancellazione dell'account, dichiarazione sull'uso della posizione in background, sezione "sicurezza dei dati" di Google Play.
@@ -110,6 +110,8 @@ Si sostiene con pubblicità non invasiva.
 - Protezione password compromesse (HaveIBeenPwned): richiede il piano Pro di Supabase.
 
 ## Modo di lavorare
-- Prima di scrivere codice, raccogliere i dettagli e fare domande mirate.
+- Autonomia: si procede da un blocco al successivo della roadmap senza chiedere conferma. Le scelte tecniche con una soluzione ragionevole si prendono e si dichiarano nel riepilogo e nella pull request.
+- Si chiede prima di procedere solo per: costi (piani a pagamento, servizi nuovi), azioni irreversibili o su dati reali/produzione, credenziali e segreti, testi legali, pubblicazione sugli store, e le voci in "Decisioni aperte".
+- Prima di scrivere codice, raccogliere i dettagli; fare domande mirate solo quando la risposta cambia davvero il lavoro.
 - Comunicazione diretta e critica; dire chiaramente cosa non è possibile.
 - Modifiche incrementali verificate eseguendo il codice. Niente riscritture totali non richieste.

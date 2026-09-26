@@ -133,6 +133,11 @@ export function createSupabaseBackend(url, key){
     },
     async signOut(){ await sb.auth.signOut(); session = null; },
     async redeem(){ throw new Error('Riscatto dei premi non ancora disponibile: i premi sono DEMO.'); },
+    // ---- tracking live ----
+    async startLiveShare(plate){ await ensureSession(); return call('start_ride_share', {p_hours:3, p_plate:plate || null}); },
+    updateLiveShare: (id, p, street) => call('update_ride_share', {p_id:id, p_lat:p.lat, p_lng:p.lng, p_street:street || null}),
+    endLiveShare: id => call('end_ride_share', {p_id:id}),
+    getLiveShare: token => call('get_ride_share', {p_token:token}),
     async role(){ return userFrom(session) ? (await call('my_role')) || 'utente' : 'utente'; },
     async submitDriverReply(reportId, identifier, contact, body){
       await ensureSession();

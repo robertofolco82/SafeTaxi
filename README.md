@@ -76,6 +76,10 @@ Regole principali:
 - Rating del tassista (`get_driver_rating`) solo con almeno 5 segnalazioni verificate e pubblicate.
 - Verificata = utente non anonimo con email confermata. I punti si assegnano alla pubblicazione, uguali per positive e negative.
 
+### Tracking live
+
+Scheda **Corsa → 🔴 Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
+
 ### Moderare dall'app
 
 Con un account moderatore: **Profilo → Apri la moderazione**. La pagina mostra:

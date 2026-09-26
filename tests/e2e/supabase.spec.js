@@ -332,3 +332,43 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   await page.getByRole('button', {name: /Home/}).click();
   await expect(item.locator('.reply')).toContainText('la ricevuta lo dimostra');
 });
+
+test('tracking live: il contatto segue la corsa dal link e a fine corsa non vede più la posizione', async ({page, browser}) => {
+  test.setTimeout(120000);
+  await page.getByRole('button', {name: /Corsa/}).click();
+  await page.fill('#lookupInput', 'AB123CD');
+  await page.evaluate(() => window.simulateRide());
+  await expect(page.locator('#rideStreet')).toContainText('Via del Viminale', {timeout: 10000});
+  await page.getByRole('button', {name: '🔴 Condividi la corsa in tempo reale'}).click();
+  await expect(page.locator('#liveState')).toContainText('Condivisione attiva fino alle');
+  await expect(page.locator('#shareText')).toHaveValue(/Segui la corsa in tempo reale: http:\/\/127\.0\.0\.1:4174\/\?live=/);
+  const link = (await page.locator('#shareText').inputValue()).match(/http:\/\/127\.0\.0\.1:4174\/\?live=[A-Za-z0-9_-]+/)[0];
+  await page.locator('#m-share button.x').click();
+
+  // Il contatto apre il link in un altro browser, senza account.
+  const viewerCtx = await browser.newContext({locale: 'it-IT'});
+  await viewerCtx.route(u => !['127.0.0.1', 'localhost'].includes(u.hostname), r => r.request().url().includes('tile.openstreetmap.org') ? r.fulfill({contentType: 'image/png', body: PNG}) : r.abort());
+  const viewer = await viewerCtx.newPage();
+  const viewerErrors = [];
+  viewer.on('pageerror', e => viewerErrors.push(e.message));
+  await viewer.goto(link);
+  await expect(viewer.locator('#liveStatus')).toHaveText('In corso');
+  await expect(viewer.locator('#liveStreet')).toContainText('Via del Viminale');
+  await expect(viewer.locator('#liveInfo')).toContainText('Taxi AB•••CD');
+  await expect(viewer.locator('#liveMap .leaflet-interactive')).not.toHaveCount(0);
+  await expect(viewer.locator('.app')).toBeHidden();
+
+  // Fine corsa: il contatto vede solo lo stato, le posizioni sono cancellate.
+  await page.locator('#rideBtn').click();
+  await expect(page.locator('#m-rate')).toHaveClass(/open/);
+  await expect(viewer.locator('#liveStatus')).toHaveText('Corsa conclusa', {timeout: 15000});
+  await expect(viewer.locator('#liveStreet')).toContainText('non è più visibile');
+  await expect(viewer.locator('#liveMap .leaflet-interactive')).toHaveCount(0);
+  const token = new URL(link).searchParams.get('live');
+  const [share] = await rest(`ride_shares?select=id,token_hash,ended_at&order=created_at.desc&limit=1`);
+  expect(share.token_hash).not.toBe(token);
+  expect(share.ended_at).not.toBeNull();
+  expect(await rest(`ride_share_points?share_id=eq.${share.id}&select=id`)).toEqual([]);
+  expect(viewerErrors).toEqual([]);
+  await viewerCtx.close();
+});

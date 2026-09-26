@@ -94,4 +94,5 @@ nav.tabs button.on{color:var(--pri);font-weight:700}
 .mod-media .btn{margin-top:4px;width:100%}
 .blur-wrap{touch-action:none;user-select:none}
 #blurCanvas{width:100%;height:auto;border-radius:8px;cursor:crosshair;display:block}
-
+.live-mode .app,.live-mode nav.tabs,.live-mode .sos-fab{display:none}
+#liveView{max-width:480px;margin:0 auto}
