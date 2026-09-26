@@ -225,3 +225,110 @@ test('il server rifiuta e cancella una foto che contiene ancora i metadati', asy
   const forbidden = await other.functions.invoke('register-attachment', {body: {report_id: reportId, path, kind: 'foto'}});
   expect(forbidden.error?.context?.status).toBe(403);
 });
+
+test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del tassista', async ({page}) => {
+  test.setTimeout(120000);
+  const stamp = Date.now(), plate = 'MQ' + String(stamp).slice(-3) + 'RT';
+  const description = `Moderazione ${stamp}: auto con il tassametro spento per tutto il tragitto.`;
+  const modEmail = `moderatore.${stamp}@example.com`, modPassword = 'password-moderatore-1';
+  // Moderatore creato come farebbe l'amministratore dal pannello: utente confermato e ruolo "moderatore".
+  const created = await (await fetch(`${API}/auth/v1/admin/users`, {method: 'POST', headers: serviceHeaders(),
+    body: JSON.stringify({email: modEmail, password: modPassword, email_confirm: true})})).json();
+  await rest(`profiles?id=eq.${created.id}`, {method: 'PATCH', body: JSON.stringify({role: 'moderatore'}), headers: {Prefer: 'return=minimal'}});
+
+  // 1. Un ospite invia la segnalazione con una foto.
+  await page.getByRole('button', {name: /Segnala/}).click();
+  await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
+  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await page.fill('#reportForm [name=name]', 'Paola Blu');
+  await page.fill('#reportForm [name=licenza]', '4455');
+  await page.fill('#reportForm [name=targa]', plate);
+  await page.selectOption('#reportCity', 'torino');
+  await page.selectOption('#reportType', 'tariffa');
+  await page.locator('#reportStars span').nth(0).click();
+  await page.fill('#reportForm [name=description]', description);
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('in moderazione');
+  const [report] = await rest(`reports?description=eq.${encodeURIComponent(description)}&select=id`);
+  const [photoBefore] = await rest(`attachments?report_id=eq.${report.id}&select=id,storage_path`);
+
+  // 2. Il moderatore entra (browser "pulito") e trova la segnalazione con i dati riservati.
+  const loginModerator = async () => {
+    await page.locator('#profileBtn').click();
+    await page.getByRole('button', {name: 'Accedi o registrati'}).click();
+    await page.fill('#loginEmail', modEmail);
+    await page.fill('#loginPwd', modPassword);
+    await page.getByRole('button', {name: 'Accedi', exact: true}).click();
+    await page.getByRole('button', {name: 'Apri la moderazione'}).click();
+  };
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator('#m-privacy').getByRole('button', {name: 'Ho capito'}).click();
+  await loginModerator();
+  const card = page.locator(`[data-report="${report.id}"]`);
+  await expect(card).toContainText('Paola Blu');
+  await expect(card).toContainText(plate);
+  await expect(card).toContainText('1 volto sfocato');
+
+  // 3. Sfoca una targa trascinando sulla foto: la foto viene sostituita e le targhe risultano verificate.
+  const download = async p => Buffer.from(await (await fetch(`${API}/storage/v1/object/attachments/${p}`, {headers: serviceHeaders()})).arrayBuffer()).toString('base64');
+  const originalPhoto = await download(photoBefore.storage_path);
+  await card.getByRole('button', {name: '🚗 Sfoca targhe'}).click();
+  const canvas = page.locator('#blurCanvas');
+  await expect(canvas).toBeVisible();
+  await expect.poll(() => canvas.evaluate(c => c.width)).toBeGreaterThan(100);
+  const box = await canvas.boundingBox();
+  await page.mouse.move(box.x + box.width*0.2, box.y + box.height*0.7);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width*0.6, box.y + box.height*0.85, {steps: 5});
+  await page.mouse.up();
+  await page.getByRole('button', {name: 'Salva e conferma targhe'}).click();
+  await expect(page.locator('#toast')).toContainText('Targhe sfocate');
+  const [photoAfter] = await rest(`attachments?id=eq.${photoBefore.id}&select=storage_path,plates_blurred,moderated_by,is_public`);
+  expect(photoAfter.storage_path).not.toBe(photoBefore.storage_path);
+  expect(photoAfter).toMatchObject({plates_blurred: true, moderated_by: created.id, is_public: false});
+  expect((await fetch(`${API}/storage/v1/object/attachments/${photoBefore.storage_path}`, {headers: serviceHeaders()})).ok).toBe(false);
+  // Confronto dei pixel: dentro il rettangolo la foto cambia molto (pixelata), fuori resta quasi uguale.
+  const diff = await page.evaluate(async ([a, b]) => {
+    const pixels = async b64 => { const bmp = await createImageBitmap(await (await fetch('data:image/jpeg;base64,' + b64)).blob());
+      const c = document.createElement('canvas'); c.width = bmp.width; c.height = bmp.height; const x = c.getContext('2d'); x.drawImage(bmp, 0, 0);
+      return {w: bmp.width, h: bmp.height, d: x.getImageData(0, 0, bmp.width, bmp.height).data}; };
+    const A = await pixels(a), B = await pixels(b);
+    const mean = (x0, x1, y0, y1) => { let s = 0, n = 0; for (let y = Math.floor(y0*A.h); y < y1*A.h; y += 2) for (let x = Math.floor(x0*A.w); x < x1*A.w; x += 2) { const i = (y*A.w + x)*4; s += Math.abs(A.d[i] - B.d[i]); n++; } return s/n; };
+    return {inside: mean(0.25, 0.55, 0.72, 0.83), outside: mean(0.05, 0.9, 0.05, 0.6)};
+  }, [originalPhoto, await download(photoAfter.storage_path)]);
+  expect(diff.inside).toBeGreaterThan(3*diff.outside);
+
+  // 4. Approva la foto e pubblica la segnalazione: compare nel feed con la foto.
+  await card.getByRole('button', {name: '🌐 Targhe ok, pubblica'}).click();
+  await expect(page.locator('#toast')).toContainText('Foto approvata');
+  await card.getByRole('button', {name: '✅ Pubblica'}).click();
+  await expect(page.locator(`[data-report="${report.id}"]`)).toHaveCount(0);
+  await page.getByRole('button', {name: /Home/}).click();
+  const item = page.locator('#feed .feed-item', {hasText: description.slice(0, 30)});
+  await expect(item.locator('.feed-photos img')).toHaveCount(1);
+
+  // 5. Il tassista replica (da ospite), il moderatore verifica e pubblica.
+  await page.locator('#profileBtn').click();
+  await page.getByRole('button', {name: 'Esci'}).click();
+  await page.getByRole('button', {name: /Home/}).click();
+  await item.getByRole('button', {name: 'Sei il tassista? Replica'}).click();
+  await page.fill('#replyIdent', plate.toLowerCase());
+  await page.fill('#replyContact', 'tassista@example.com');
+  await page.fill('#replyBody', 'Il tassametro era acceso: la ricevuta lo dimostra, sono disponibile a chiarire.');
+  await page.getByRole('button', {name: 'Invia replica'}).click();
+  await expect(page.locator('#toast')).toContainText('Replica inviata');
+  await expect(item.locator('.reply')).toHaveCount(0);
+  await page.evaluate(() => localStorage.clear());
+  await page.reload();
+  await page.locator('#m-privacy').getByRole('button', {name: 'Ho capito'}).click();
+  await loginModerator();
+  const replyCard = page.locator('[data-reply]', {hasText: 'la ricevuta lo dimostra'});
+  await expect(replyCard).toContainText('✅ corrisponde alla segnalazione');
+  await expect(replyCard).toContainText('tassista@example.com');
+  await replyCard.getByRole('button', {name: '✅ Pubblica'}).click();
+  await expect(page.locator('#toast')).toContainText('Pubblicata');
+  await page.getByRole('button', {name: /Home/}).click();
+  await expect(item.locator('.reply')).toContainText('la ricevuta lo dimostra');
+});

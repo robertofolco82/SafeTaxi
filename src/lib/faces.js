@@ -35,3 +35,11 @@ export function mergeFaces(boxes){
   }
   return out;
 }
+
+// Rettangolo disegnato trascinando da a a b (in qualsiasi direzione), limitato all'immagine.
+// Restituisce null se troppo piccolo per essere intenzionale (meno di 4 px per lato).
+export function dragRect(a, b, w, h){
+  const x1 = Math.max(0, Math.min(a.x, b.x)), y1 = Math.max(0, Math.min(a.y, b.y));
+  const x2 = Math.min(w, Math.max(a.x, b.x)), y2 = Math.min(h, Math.max(a.y, b.y));
+  return x2 - x1 < 4 || y2 - y1 < 4 ? null : {x:Math.round(x1), y:Math.round(y1), w:Math.round(x2 - x1), h:Math.round(y2 - y1)};
+}

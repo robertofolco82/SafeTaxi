@@ -84,3 +84,14 @@ nav.tabs button.on{color:var(--pri);font-weight:700}
 .thumb .faces{position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.65);color:#fff;border-radius:8px;padding:1px 5px;font-size:10px}
 .feed-photos{display:flex;gap:6px;margin-top:6px}
 .feed-photos img{width:72px;height:72px;object-fit:cover;border-radius:8px}
+.reply{margin-top:6px;padding:8px 10px;border-left:3px solid var(--pri);background:#f0fdfa;border-radius:8px;font-size:13px}
+.linkbtn{background:none;border:0;color:var(--pri);font-size:12px;padding:0;margin-top:6px;cursor:pointer;font-family:inherit;text-decoration:underline}
+.mod-media{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+.mod-media figure{margin:0;width:140px}
+.mod-media img{width:140px;height:140px;object-fit:cover;border-radius:8px;display:block}
+.mod-media video,.mod-media audio{width:140px}
+.mod-media figcaption{font-size:11px;color:var(--mut);margin:3px 0}
+.mod-media .btn{margin-top:4px;width:100%}
+.blur-wrap{touch-action:none;user-select:none}
+#blurCanvas{width:100%;height:auto;border-radius:8px;cursor:crosshair;display:block}
+

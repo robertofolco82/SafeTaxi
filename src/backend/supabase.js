@@ -42,6 +42,16 @@ export function createSupabaseBackend(url, key){
     }
     return errors;
   }
+  // Repliche dei tassisti pubblicate, raggruppate per segnalazione.
+  async function publicReplies(){
+    const {data, error} = await sb.from('driver_replies').select('report_id,body,created_at').order('created_at').limit(500);
+    if (error) return {};
+    const byReport = {};
+    data.forEach(d => (byReport[d.report_id] = byReport[d.report_id] || []).push({body:d.body, createdAt:Date.parse(d.created_at)}));
+    return byReport;
+  }
+  const call = async (fn, args) => { const {data, error} = await sb.rpc(fn, args); if (error) fail(error); return data; };
+
   // Foto rese pubbliche dal moderatore: link temporanei (1 ora) raggruppati per segnalazione.
   async function publicPhotos(){
     const {data, error} = await sb.from('attachments').select('report_id,storage_path').eq('is_public', true).eq('kind', 'foto').limit(300);
@@ -63,8 +73,8 @@ export function createSupabaseBackend(url, key){
     async loadReports(){
       const {data, error} = await sb.from('reports').select(PUBLIC_REPORT_COLUMNS).order('created_at', {ascending:false}).limit(1000);
       if (error) fail(error);
-      const photos = await publicPhotos().catch(() => ({}));
-      return data.map(r => Object.assign(fromDbReport(r), {photos: photos[r.id] || []}));
+      const [photos, replies] = await Promise.all([publicPhotos().catch(() => ({})), publicReplies().catch(() => ({}))]);
+      return data.map(r => Object.assign(fromDbReport(r), {photos: photos[r.id] || [], replies: replies[r.id] || []}));
     },
     async submitReport(d){
       await ensureSession();
@@ -123,5 +133,29 @@ export function createSupabaseBackend(url, key){
     },
     async signOut(){ await sb.auth.signOut(); session = null; },
     async redeem(){ throw new Error('Riscatto dei premi non ancora disponibile: i premi sono DEMO.'); },
+    async role(){ return userFrom(session) ? (await call('my_role')) || 'utente' : 'utente'; },
+    async submitDriverReply(reportId, identifier, contact, body){
+      await ensureSession();
+      await call('submit_driver_reply', {p_report_id:reportId, p_identifier:identifier, p_contact:contact, p_body:body});
+    },
+    // ---- moderazione (le funzioni del database verificano il ruolo) ----
+    moderationQueue: () => call('moderation_queue'),
+    moderateReport: (id, status, reason) => call('moderate_report', {p_id:id, p_status:status, p_reason:reason || null}),
+    moderateAttachment: (id, isPublic) => call('moderate_attachment', {p_id:id, p_public:isPublic}),
+    moderateReply: (id, status, reason) => call('moderate_reply', {p_id:id, p_status:status, p_reason:reason || null}),
+    async signedUrls(paths){
+      if (!paths.length) return {};
+      const {data, error} = await sb.storage.from('attachments').createSignedUrls(paths, 3600);
+      if (error) fail(error);
+      const out = {}; data.forEach((d, i) => { if (d.signedUrl) out[paths[i]] = d.signedUrl; }); return out;
+    },
+    // Sostituisce una foto con la versione a targhe sfocate: nuovo file, poi verifica e scambio lato server.
+    async replacePhoto(att, blob){
+      const path = att.storage_path.split('/')[0] + '/' + crypto.randomUUID() + '.jpg';
+      const up = await sb.storage.from('attachments').upload(path, blob, {contentType:'image/jpeg', upsert:false});
+      if (up.error) fail(up.error);
+      const {error} = await sb.functions.invoke('register-attachment', {body:{replace_attachment_id:att.id, path}});
+      if (error) { let m = error.message; try { m = (await error.context.json()).error || m; } catch(e) {} throw new Error(m); }
+    },
   };
 }

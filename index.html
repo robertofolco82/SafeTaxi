@@ -177,6 +177,7 @@
 
     <!-- PROFILO -->
     <section class="tab" id="tab-profilo"><div id="profileBox"></div></section>
+    <section class="tab" id="tab-moderazione"><div id="modBox"></div></section>
   </main>
 </div>
 
@@ -251,6 +252,29 @@
 </div></div>
 
 <!-- MODALE PRIVACY -->
+<div class="modal" id="m-reject"><div class="sheet">
+  <h2>❌ Rifiuta <button class="x" onclick="closeModal('m-reject')">✕</button></h2>
+  <label class="f">Motivo (visibile all'autore)</label>
+  <textarea id="rejectReason" placeholder="Es. contenuto offensivo, dati personali di terzi, segnalazione non pertinente"></textarea>
+  <button class="btn red" style="margin-top:12px" onclick="confirmReject()">Rifiuta</button>
+</div></div>
+
+<div class="modal" id="m-blur"><div class="sheet">
+  <h2>🚗 Sfoca le targhe <button class="x" onclick="closeModal('m-blur')">✕</button></h2>
+  <p class="muted">Trascina sulla foto per coprire ogni targa leggibile (e altri dati personali). Il risultato sostituisce la foto originale.</p>
+  <div class="blur-wrap"><canvas id="blurCanvas"></canvas></div>
+  <div class="row" style="margin-top:10px"><button class="btn sec" onclick="undoBlur()">↩️ Annulla ultimo</button><button class="btn" id="blurSave" onclick="saveBlur()">Salva e conferma targhe</button></div>
+</div></div>
+
+<div class="modal" id="m-reply"><div class="sheet">
+  <h2>💬 Replica del tassista <button class="x" onclick="closeModal('m-reply')">✕</button></h2>
+  <p class="muted">Sei il tassista coinvolto? Puoi rispondere alla segnalazione. La replica viene pubblicata dopo la verifica di un moderatore, che potrà contattarti.</p>
+  <label class="f">Targa o numero di licenza <span class="req">*</span></label><input id="replyIdent" autocomplete="off" placeholder="Serve alla verifica, non viene pubblicato">
+  <label class="f">Email o telefono per la verifica <span class="req">*</span></label><input id="replyContact" autocomplete="email" placeholder="Non viene pubblicato">
+  <label class="f">La tua replica <span class="req">*</span></label><textarea id="replyBody" placeholder="Minimo 20 caratteri"></textarea>
+  <button class="btn" style="margin-top:12px" onclick="sendReply()">Invia replica</button>
+</div></div>
+
 <div class="modal" id="m-privacy"><div class="sheet">
   <h2>🔒 Privacy in breve <button class="x" onclick="closeModal('m-privacy')">✕</button></h2>
   <div style="font-size:14px;line-height:1.5">
