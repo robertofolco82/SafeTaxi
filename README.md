@@ -76,9 +76,19 @@ Regole principali:
 - Rating del tassista (`get_driver_rating`) solo con almeno 5 segnalazioni verificate e pubblicate.
 - Verificata = utente non anonimo con email confermata. I punti si assegnano alla pubblicazione, uguali per positive e negative.
 
-### Moderare dal pannello Supabase
+### Moderare dall'app
 
-Finché non c'è la pagina di moderazione nell'app:
+Con un account moderatore: **Profilo → Apri la moderazione**. La pagina mostra:
+- le segnalazioni in attesa, con nome del segnalatore, targa, licenza, posizione esatta e allegati (video e audio si riproducono lì);
+- per ogni foto: **Sfoca targhe** (trascina sulla foto per coprire le targhe: la versione sfocata sostituisce l'originale, dopo il controllo dei metadati sul server) e **Targhe ok, pubblica**;
+- **Pubblica** o **Rifiuta** con motivo (l'autore lo vede tra "Le tue segnalazioni");
+- le foto ancora private di segnalazioni già pubblicate;
+- le repliche dei tassisti, con il contatto per la verifica e l'indicazione se targa o licenza corrispondono (chi invia non lo scopre mai).
+
+Tutte le azioni passano da funzioni del database che verificano il ruolo (`moderation_queue`, `moderate_report`, `moderate_attachment`, `moderate_reply`).
+
+### Moderare dal pannello Supabase (alternativa)
+
 1. Su supabase.com apri il progetto, poi **Table Editor → reports** e filtra `status = in_moderazione`.
 2. Per pubblicare, imposta `status` a `pubblicata`; per rifiutare, `rifiutata` e scrivi il motivo in `rejection_reason`.
 3. Nome del segnalatore, targa e licenza sono nella tabella `reports_private` dello schema `private` (selettore dello schema in alto a sinistra).

@@ -1,5 +1,5 @@
 import {describe, it, expect} from 'vitest';
-import {expandBox, detectionTiles, pixelBlock, mergeFaces} from '../../src/lib/faces.js';
+import {expandBox, detectionTiles, pixelBlock, mergeFaces, dragRect} from '../../src/lib/faces.js';
 
 describe('sfocatura dei volti', () => {
   it('allarga il riquadro del volto restando dentro l\'immagine', () => {
@@ -22,5 +22,10 @@ describe('sfocatura dei volti', () => {
     const merged = mergeFaces([{x:100, y:100, w:50, h:50}, {x:105, y:98, w:48, h:52}, {x:400, y:100, w:40, h:40}]);
     expect(merged).toHaveLength(2);
     expect(merged[0]).toEqual({x:100, y:98, w:53, h:52});
+  });
+  it('ricava il rettangolo della targa trascinando in qualsiasi direzione, dentro la foto', () => {
+    expect(dragRect({x:200, y:150}, {x:100, y:120}, 640, 480)).toEqual({x:100, y:120, w:100, h:30});
+    expect(dragRect({x:600, y:470}, {x:700, y:520}, 640, 480)).toEqual({x:600, y:470, w:40, h:10});
+    expect(dragRect({x:10, y:10}, {x:12, y:40}, 640, 480)).toBeNull();
   });
 });

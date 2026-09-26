@@ -2,6 +2,7 @@
 // - chi chiama è l'autore della segnalazione, ancora in moderazione;
 // - formato e dimensione ammessi per il tipo dichiarato;
 // - le foto sono JPEG senza metadati (EXIF/GPS, XMP, IPTC): se ne contengono, il file viene cancellato.
+// Modalità "replace" (solo moderatori): sostituisce una foto con la versione a targhe sfocate, dopo gli stessi controlli.
 // Solo questa funzione (con la chiave di servizio) può scrivere in public.attachments.
 // Nessuna dipendenza esterna: usa direttamente le API REST di Auth, database e Storage.
 import {jpegMetadata} from '../_shared/jpeg-metadata.js';
@@ -27,8 +28,38 @@ Deno.serve(async (req) => {
   const user = userRes.ok ? await userRes.json() : null;
   if (!user?.id) return reply(401, {error: 'Accesso richiesto'});
 
-  let body: {report_id?: unknown; path?: unknown; kind?: unknown; faces_detected?: unknown};
+  let body: {report_id?: unknown; path?: unknown; kind?: unknown; faces_detected?: unknown; replace_attachment_id?: unknown};
   try { body = await req.json(); } catch { return reply(400, {error: 'Richiesta non valida'}); }
+  const objectUrl = (p: string) => '/storage/v1/object/attachments/' + p.split('/').map(encodeURIComponent).join('/');
+  const removeObject = (p: string) => admin('/storage/v1/object/attachments', {method: 'DELETE',
+    headers: {'Content-Type': 'application/json'}, body: JSON.stringify({prefixes: [p]})});
+
+  if (body.replace_attachment_id !== undefined) {
+    const [profile] = await (await admin(`/rest/v1/profiles?id=eq.${encodeURIComponent(user.id)}&select=role`)).json().catch(() => []);
+    if (!profile || !['moderatore', 'admin'].includes(profile.role)) return reply(403, {error: 'Solo i moderatori'});
+    const aid = encodeURIComponent(String(body.replace_attachment_id));
+    const [att] = await (await admin(`/rest/v1/attachments?id=eq.${aid}&select=id,report_id,kind,storage_path`)).json().catch(() => []);
+    const newPath = body.path;
+    if (!att || att.kind !== 'foto' || typeof newPath !== 'string' || !newPath.startsWith(att.report_id + '/') || newPath === att.storage_path)
+      return reply(400, {error: 'Richiesta non valida'});
+    const dl = await admin(objectUrl(newPath));
+    if (!dl.ok) return reply(404, {error: 'File non trovato'});
+    const file = await dl.blob();
+    const bad = async (status: number, error: string) => { await removeObject(newPath); return reply(status, {error}); };
+    if ((dl.headers.get('content-type') || '').split(';')[0] !== 'image/jpeg') return bad(415, 'La foto deve essere JPEG');
+    if (file.size <= 0 || file.size > MAX_ATTACHMENT_BYTES) return bad(413, 'File troppo grande (massimo 10 MB)');
+    const check = jpegMetadata(new Uint8Array(await file.arrayBuffer()));
+    if (!check.valid) return bad(415, 'Foto non valida');
+    if (check.metadata.length) return bad(422, 'La foto contiene metadati (' + check.metadata.join(', ') + ')');
+    const upd = await admin(`/rest/v1/attachments?id=eq.${aid}`, {method: 'PATCH',
+      headers: {'Content-Type': 'application/json', Prefer: 'return=minimal'},
+      body: JSON.stringify({storage_path: newPath, size_bytes: file.size, plates_blurred: true,
+        moderated_by: user.id, moderated_at: new Date().toISOString()})});
+    if (!upd.ok) return bad(500, 'Sostituzione non riuscita');
+    await removeObject(att.storage_path);
+    return reply(200, {id: att.id, replaced: true});
+  }
+
   const {report_id, path, kind} = body;
   if (typeof report_id !== 'string' || typeof path !== 'string' || !path.startsWith(report_id + '/') ||
       !['foto', 'video', 'audio'].includes(kind as string)) return reply(400, {error: 'Richiesta non valida'});
@@ -41,14 +72,10 @@ Deno.serve(async (req) => {
   const existing = await (await admin(`/rest/v1/attachments?report_id=eq.${id}&select=id`)).json().catch(() => []);
   if (existing.length >= MAX_ATTACHMENTS) return reply(409, {error: 'Massimo 6 allegati per segnalazione'});
 
-  const objectPath = '/storage/v1/object/attachments/' + path.split('/').map(encodeURIComponent).join('/');
-  const dl = await admin(objectPath);
+  const dl = await admin(objectUrl(path));
   if (!dl.ok) return reply(404, {error: 'File non trovato'});
   const file = await dl.blob();
-  const reject = async (status: number, error: string) => {
-    await admin('/storage/v1/object/attachments', {method: 'DELETE', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({prefixes: [path]})});
-    return reply(status, {error});
-  };
+  const reject = async (status: number, error: string) => { await removeObject(path); return reply(status, {error}); };
 
   const mime = (dl.headers.get('content-type') || '').split(';')[0];
   if (attachmentKind(mime) !== kind) return reject(415, 'Formato non ammesso per questo tipo di allegato');

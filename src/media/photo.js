@@ -34,7 +34,7 @@ function findFaces(det, canvas){
   return mergeFaces(faces);
 }
 
-function pixelate(canvas, box){
+export function pixelate(canvas, box){
   const ctx = canvas.getContext('2d'), bs = pixelBlock(box);
   const sw = Math.max(1, Math.round(box.w/bs)), sh = Math.max(1, Math.round(box.h/bs));
   const small = document.createElement('canvas'); small.width = sw; small.height = sh;

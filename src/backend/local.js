@@ -41,6 +41,8 @@ export function createLocalBackend(getState, save){
     async resetPassword(){ throw new Error('Nella modalità demo locale le password non vengono salvate.'); },
     async updatePassword(){},
     async signOut(){ getState().user = null; save(); },
+    async role(){ return 'utente'; },
+    async submitDriverReply(){ throw new Error('Le repliche richiedono il backend Supabase.'); },
     async redeem(r){
       const s = getState();
       s.points -= r.c; s.ledger.unshift({ts:Date.now(), n:-r.c, why:'Riscatto: ' + r.n}); save();

@@ -78,9 +78,9 @@ Si sostiene con pubblicità non invasiva.
 1. ✅ Struttura del repository: git, build con Vite, test minimi, CI.
 2. Backend Supabase (a blocchi, una pull request per blocco)
    - ✅ 2a. Schema (profiles, reports + private.reports_private, attachments, driver_stats, cities, coops, points_ledger, news), regole di accesso RLS, limiti anti-fake, moderazione e punti lato database.
-   - ✅ 2c. Allegati: foto ripulite dai metadati e con volti pixelati sul dispositivo (MediaPipe), bucket privato, verifica lato server (funzione `register-attachment`), video e audio solo ai moderatori, foto pubbliche solo dopo revisione. Manca lo strumento per sfocare le targhe (arriva con la pagina Moderazione).
+   - ✅ 2c. Allegati: foto ripulite dai metadati e con volti pixelati sul dispositivo (MediaPipe), bucket privato, verifica lato server (funzione `register-attachment`), video e audio solo ai moderatori, foto pubbliche solo dopo revisione. Targhe sfocate a mano dal moderatore (blocco 2d).
    - ✅ 2b. Autenticazione email/password con conferma, Google e anonima (Apple e Facebook rinviati); app collegata al database.
-   - Moderazione: all'inizio dal pannello Supabase, poi pagina "Moderazione" nell'app riservata ai moderatori.
+   - ✅ 2d. Pagina "Moderazione" nell'app (solo moderatori): coda con dati riservati, pubblica/rifiuta con motivo, sfocatura manuale delle targhe, approvazione delle foto, repliche dei tassisti (diritto di replica) verificate dal moderatore.
    - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
    - API ed export SFTP: rinviati.
 3. Tracking live: sessioni di condivisione con link temporaneo.

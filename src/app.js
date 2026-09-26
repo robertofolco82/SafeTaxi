@@ -9,6 +9,7 @@ import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from '
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
 import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
+import {dragRect} from './lib/faces.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
 /* ================= UTILITY ================= */
@@ -45,6 +46,7 @@ async function reloadData(){
     loadError = null;
   } catch(e) { DB.reports = []; loadError = e.message; }
   DB.user = backend.user();
+  DB.role = await backend.role().catch(() => 'utente');
   try {
     const p = await backend.points(); DB.points = p.total; DB.ledger = p.ledger;
     DB.myReports = await backend.myReports();
@@ -122,6 +124,7 @@ function openTab(name){
   if (name === 'corsa' && !rideMap) rideMap = makeMap('rideMap', [41.9, 12.5], 6);
   if (name === 'mappa' && !italyMap) initItalyMap();
   if (name === 'profilo') renderProfile();
+  if (name === 'moderazione') renderModeration();
   setTimeout(() => { [homeMap, rideMap, italyMap].forEach(m => m && m.invalidateSize()); }, 80);
 }
 function openModal(id){ document.getElementById(id).classList.add('open'); }
@@ -175,7 +178,9 @@ function renderFeed(){
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
     '<div class="muted" style="margin-top:4px">🚕 ' + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? ' · 📎 ' + r.attachments : '') + '</div>' +
-    (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') + '</div>'
+    (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') +
+    (r.replies || []).map(d => '<div class="reply"><b>💬 Replica del tassista</b> <span class="muted">· verificata dal moderatore</span><br>' + esc(d.body) + '</div>').join('') +
+    (!isLocal() && !r.demo ? '<button class="linkbtn" onclick="openReply(\'' + r.id + '\')">Sei il tassista? Replica</button>' : '') + '</div>'
   ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
 function initHome(){
@@ -623,6 +628,7 @@ function renderProfile(){
     '<div class="card">' + (u
       ? '<h2>🙂 ' + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider === 'google' ? 'Google' : u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
       : '<h2>👤 Ospite</h2><p class="muted">Senza account puoi inviare valutazioni e usare l’SOS. Per far contare le segnalazioni nei rating e accumulare punti serve l’accesso.</p><button class="btn" style="margin-top:10px" onclick="openModal(\'m-login\')">Accedi o registrati</button>') + '</div>' +
+    (isMod() ? '<div class="card"><h3>🛡️ Moderazione</h3><p class="muted">Segnalazioni, foto e repliche da verificare.</p><button class="btn" style="margin-top:8px" onclick="openTab(\'moderazione\')">Apri la moderazione</button></div>' : '') +
     myReportsCard() +
     '<div class="card"><h3>🎁 Punti e premi</h3><div class="thermo"><div class="val">' + fmtNum(DB.points) + '</div><div class="muted">Livello <b>' + lv.name + '</b>' + (lv.next ? ' · ' + (lv.next.min - DB.points) + ' punti a ' + lv.next.name : '') + '</div></div>' +
     '<div class="pbar"><span class="p"><i style="width:' + lv.pct + '%;background:var(--pri)"></i></span></div>' +
@@ -712,6 +718,146 @@ async function resetDemo(){
   }
 }
 
+/* ================= REPLICA DEL TASSISTA ================= */
+let replyTarget = null;
+function openReply(id){ replyTarget = id; ['replyIdent', 'replyContact', 'replyBody'].forEach(i => { $('#' + i).value = ''; }); openModal('m-reply'); }
+async function sendReply(){
+  const ident = $('#replyIdent').value.trim(), contact = $('#replyContact').value.trim(), body = $('#replyBody').value.trim();
+  if (normPlate(ident).length < 2) return toast('Indica la targa o il numero di licenza');
+  if (contact.length < 5) return toast('Indica un\'email o un telefono per la verifica');
+  if (body.length < 20) return toast('La replica deve avere almeno 20 caratteri');
+  try { await backend.submitDriverReply(replyTarget, ident, contact, body); closeModal('m-reply'); toast('Replica inviata: sarà pubblicata dopo la verifica del moderatore.'); }
+  catch(e) { toast(e.message); }
+}
+
+/* ================= MODERAZIONE ================= */
+// La pagina è mostrata solo ai moderatori; i controlli veri sono nelle funzioni del database.
+const isMod = () => DB && (DB.role === 'moderatore' || DB.role === 'admin');
+let modQueue = null, modUrls = {}, rejectTarget = null, blurState = null;
+const kv = (k, v) => '<div class="kv"><span>' + k + '</span><b style="text-align:right">' + esc(v) + '</b></div>';
+function modAttachment(id){
+  for (const r of modQueue.reports.concat(modQueue.published_with_photos)) for (const a of r.attachments) if (a.id === id) return a;
+  return null;
+}
+async function renderModeration(){
+  const box = $('#modBox');
+  if (!isMod()) { box.innerHTML = '<div class="card"><p class="muted">Pagina riservata ai moderatori.</p></div>'; return; }
+  box.innerHTML = '<div class="card"><p class="muted">Carico la coda…</p></div>';
+  try {
+    modQueue = await backend.moderationQueue();
+    modUrls = await backend.signedUrls(modQueue.reports.concat(modQueue.published_with_photos).flatMap(r => r.attachments.map(a => a.storage_path)));
+  } catch(e) { box.innerHTML = '<div class="card"><p class="muted">Coda non disponibile: ' + esc(e.message) + '</p></div>'; return; }
+  const q = modQueue, h = (t, n) => '<h3 style="margin:14px 2px 8px">' + t + ' (' + n + ')</h3>';
+  box.innerHTML =
+    '<div class="card"><div class="row between"><h2>🛡️ Moderazione</h2><button class="btn sec sm" onclick="renderModeration()">↻ Aggiorna</button></div>' +
+    '<p class="muted">Pubblica solo contenuti pertinenti, senza insulti né dati personali di terzi. In caso di rifiuto l\'autore vede il motivo.</p></div>' +
+    h('📝 Segnalazioni in attesa', q.reports.length) +
+    (q.reports.length ? q.reports.map(modReportCard).join('') : '<div class="card muted">Nessuna segnalazione in attesa.</div>') +
+    (q.published_with_photos.length ? h('📷 Foto da rivedere (segnalazioni già pubblicate)', q.published_with_photos.length) +
+      q.published_with_photos.map(r => '<div class="card"><b>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + '</b>' +
+        '<p class="muted" style="margin-top:4px">' + esc(r.description) + '</p>' + modMedia(r.attachments) + '</div>').join('') : '') +
+    h('💬 Repliche dei tassisti', q.replies.length) +
+    (q.replies.length ? q.replies.map(modReplyCard).join('') : '<div class="card muted">Nessuna replica in attesa.</div>');
+}
+function modMedia(atts){
+  if (!atts.length) return '';
+  return '<div class="mod-media">' + atts.map(a => {
+    const u = esc(modUrls[a.storage_path] || '');
+    if (a.kind === 'video') return '<figure><video controls preload="metadata" src="' + u + '"></video><figcaption>🎥 Video · solo moderatori</figcaption></figure>';
+    if (a.kind === 'audio') return '<figure><audio controls preload="metadata" src="' + u + '"></audio><figcaption>🎙️ Audio · solo moderatori</figcaption></figure>';
+    return '<figure><img src="' + u + '" alt="Foto allegata"><figcaption>' +
+      (a.faces_detected ? '😶 ' + a.faces_detected + (a.faces_detected === 1 ? ' volto sfocato' : ' volti sfocati') : 'Nessun volto trovato') +
+      ' · ' + (a.is_public ? '🌐 pubblica' : '🔒 privata') + (a.plates_blurred ? ' · targhe ok' : '') + '</figcaption>' +
+      '<button class="btn sec sm" onclick="openBlur(\'' + a.id + '\')">🚗 Sfoca targhe</button>' +
+      (a.is_public ? '<button class="btn sec sm" onclick="setPhotoPublic(\'' + a.id + '\', false)">🙈 Nascondi</button>'
+                   : '<button class="btn sm" onclick="setPhotoPublic(\'' + a.id + '\', true)">🌐 Targhe ok, pubblica</button>') + '</figure>';
+  }).join('') + '</div>';
+}
+function modReportCard(r){
+  const city = CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key;
+  return '<div class="card" data-report="' + r.id + '"><div class="row between"><b>' + (TYPES[r.type] || '') + ' · ' + esc(city) + '</b><span class="muted">' + ago(Date.parse(r.created_at)) + '</span></div>' +
+    '<div class="row between" style="margin:4px 0"><span style="font-size:12px">' + (r.kind === 'valutazione_corsa' ? '⭐ Valutazione di fine corsa' : '📝 Segnalazione') + ' ' +
+    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + '</span><span class="stars">' + stars(r.rating) + '</span></div>' +
+    '<p style="font-size:14px;margin:6px 0">' + esc(r.description) + '</p>' +
+    kv('Segnalatore', r.reporter_name || '—') + kv('Targa', r.plate || '—') + kv('Licenza', r.license || '—') +
+    (r.from_place || r.to_place ? kv('Tratta', (r.from_place || '…') + ' → ' + (r.to_place || '…')) : '') +
+    (r.cost_eur != null || r.duration_min ? kv('Importo e durata', (r.cost_eur != null ? fmtEur(+r.cost_eur) : '—') + ' · ' + (r.duration_min ? r.duration_min + ' min' : '—')) : '') +
+    (r.lat != null ? '<div class="kv"><span>Posizione</span><a href="' + mapsLink({lat:r.lat, lng:r.lng}) + '" target="_blank" rel="noopener">' + r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) + '</a></div>' : '') +
+    modMedia(r.attachments) +
+    '<div class="row" style="margin-top:10px"><button class="btn" onclick="modDecide(\'report\', \'' + r.id + '\', \'pubblicata\')">✅ Pubblica</button>' +
+    '<button class="btn red" onclick="modDecide(\'report\', \'' + r.id + '\', \'rifiutata\')">❌ Rifiuta</button></div></div>';
+}
+function modReplyCard(d){
+  return '<div class="card" data-reply="' + d.id + '"><div class="row between"><b>Replica a: ' + esc(CITIES[d.city_key] ? CITIES[d.city_key].n : d.city_key) + ' · 🚕 ' + esc(d.plate_masked || '—') + '</b><span class="muted">' + ago(Date.parse(d.created_at)) + '</span></div>' +
+    '<p class="muted" style="margin:4px 0">Segnalazione: ' + esc(d.report_description) + '</p>' +
+    '<div class="reply">' + esc(d.body) + '</div>' +
+    kv('Targa o licenza indicata', d.identifier) +
+    '<div class="kv"><span>Corrispondenza</span><b>' + (d.identifier_matches ? '✅ corrisponde alla segnalazione' : '⚠️ non corrisponde') + '</b></div>' +
+    kv('Contatto per la verifica', d.contact) +
+    '<div class="row" style="margin-top:10px"><button class="btn" onclick="modDecide(\'reply\', \'' + d.id + '\', \'pubblicata\')">✅ Pubblica</button>' +
+    '<button class="btn red" onclick="modDecide(\'reply\', \'' + d.id + '\', \'rifiutata\')">❌ Rifiuta</button></div></div>';
+}
+async function runMod(fn, message){
+  try { await fn(); toast(message); await renderModeration(); reloadData(); } catch(e) { toast(e.message); }
+}
+async function modDecide(what, id, status){
+  if (status === 'rifiutata') { rejectTarget = {what, id}; $('#rejectReason').value = ''; openModal('m-reject'); return; }
+  await runMod(() => what === 'report' ? backend.moderateReport(id, status) : backend.moderateReply(id, status), 'Pubblicata ✅');
+}
+async function confirmReject(){
+  const reason = $('#rejectReason').value.trim(), t = rejectTarget;
+  if (reason.length < 3) return toast('Indica il motivo del rifiuto');
+  closeModal('m-reject');
+  await runMod(() => t.what === 'report' ? backend.moderateReport(t.id, 'rifiutata', reason) : backend.moderateReply(t.id, 'rifiutata', reason), 'Rifiutata');
+}
+async function setPhotoPublic(id, isPublic){
+  await runMod(() => backend.moderateAttachment(id, isPublic), isPublic ? 'Foto approvata: visibile quando la segnalazione è pubblicata' : 'Foto nascosta');
+}
+
+// Editor delle targhe: il moderatore trascina rettangoli sulla foto, che vengono pixelati; il risultato sostituisce l'originale.
+async function openBlur(id){
+  const a = modAttachment(id); if (!a) return;
+  const {pixelate} = await import('./media/photo.js');
+  const img = new Image(); img.crossOrigin = 'anonymous';
+  try { await new Promise((res, rej) => { img.onload = res; img.onerror = () => rej(new Error('Foto non caricabile')); img.src = modUrls[a.storage_path]; }); }
+  catch(e) { return toast(e.message); }
+  const c = $('#blurCanvas'); c.width = img.naturalWidth; c.height = img.naturalHeight;
+  blurState = {att:a, img, pixelate, rects:[], drag:null};
+  drawBlur(); openModal('m-blur');
+}
+function drawBlur(){
+  const st = blurState, c = $('#blurCanvas'), ctx = c.getContext('2d');
+  ctx.drawImage(st.img, 0, 0);
+  st.rects.forEach(r => st.pixelate(c, r));
+  const r = st.drag && dragRect(st.drag.a, st.drag.b, c.width, c.height);
+  if (r) { ctx.strokeStyle = '#facc15'; ctx.lineWidth = Math.max(2, c.width/250); ctx.strokeRect(r.x, r.y, r.w, r.h); }
+}
+function canvasPoint(e){ const c = $('#blurCanvas'), b = c.getBoundingClientRect(); return {x:(e.clientX - b.left)*c.width/b.width, y:(e.clientY - b.top)*c.height/b.height}; }
+function initBlurEditor(){
+  const c = $('#blurCanvas');
+  c.addEventListener('pointerdown', e => { if (!blurState) return; c.setPointerCapture(e.pointerId); const p = canvasPoint(e); blurState.drag = {a:p, b:p}; });
+  c.addEventListener('pointermove', e => { if (!blurState || !blurState.drag) return; blurState.drag.b = canvasPoint(e); drawBlur(); });
+  c.addEventListener('pointerup', e => {
+    if (!blurState || !blurState.drag) return;
+    const r = dragRect(blurState.drag.a, canvasPoint(e), c.width, c.height);
+    blurState.drag = null; if (r) blurState.rects.push(r); drawBlur();
+  });
+}
+function undoBlur(){ if (blurState) { blurState.rects.pop(); drawBlur(); } }
+async function saveBlur(){
+  if (!blurState || !blurState.rects.length) return toast('Trascina sulla foto per coprire almeno una targa');
+  const btn = $('#blurSave'); btn.disabled = true;
+  try {
+    blurState.drag = null; drawBlur();
+    const blob = await new Promise((res, rej) => $('#blurCanvas').toBlob(b => b ? res(b) : rej(new Error('Elaborazione non riuscita')), 'image/jpeg', 0.88));
+    await backend.replacePhoto(blurState.att, blob);
+    closeModal('m-blur'); blurState = null;
+    toast('Targhe sfocate ✅ La foto originale è stata sostituita.');
+    await renderModeration();
+  } catch(e) { toast(e.message); }
+  finally { btn.disabled = false; }
+}
+
 /* ================= NEWS ================= */
 function renderNews(){
   const items = [
@@ -739,6 +885,7 @@ async function init(){
  $('#cityList').innerHTML = Object.values(CITIES).map(c => '<option value="' + c.n + '">').join('');
  $('#citySearch').addEventListener('change', searchCity);
  $('#shareText').addEventListener('input', () => { shareEdited = true; });
+  initBlurEditor();
  renderCityStats('roma');
   refreshAll();
   initHome();
@@ -750,4 +897,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
