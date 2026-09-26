@@ -2,11 +2,14 @@
 import {createClient} from '@supabase/supabase-js';
 import {PUBLIC_REPORT_COLUMNS, fromDbReport, authErrorMessage} from '../lib/remote.js';
 import {extensionFor} from '../../supabase/functions/_shared/attachment-types.js';
+import {isNative, APP_SCHEME, AUTH_REDIRECT} from '../native/platform.js';
+import {parseAuthLink} from '../lib/deeplink.js';
 
 export function createSupabaseBackend(url, key){
   const sb = createClient(url, key, {auth:{flowType:'pkce', persistSession:true, autoRefreshToken:true, detectSessionInUrl:true}});
   let session = null;
-  const redirectTo = () => location.origin + location.pathname;
+  // Nell'app nativa i link di Supabase tornano all'app (it.safetaxi.app://auth), sul web alla pagina corrente.
+  const redirectTo = (flow) => isNative() ? AUTH_REDIRECT + (flow ? '?flow=' + flow : '') : location.origin + location.pathname;
   const fail = error => { throw new Error(authErrorMessage(error)); };
   const userFrom = s => {
     const u = s && s.user;
@@ -51,6 +54,14 @@ export function createSupabaseBackend(url, key){
     return byReport;
   }
   const call = async (fn, args) => { const {data, error} = await sb.rpc(fn, args); if (error) fail(error); return data; };
+  async function nativeRpc(fn, args, retry = true){
+    const {CapacitorHttp} = await import('@capacitor/core');
+    const r = await CapacitorHttp.post({url:url + '/rest/v1/rpc/' + fn, data:args,
+      headers:{apikey:key, Authorization:'Bearer ' + (session ? session.access_token : key), 'Content-Type':'application/json'}});
+    if (r.status === 401 && retry) { await sb.auth.refreshSession(); return nativeRpc(fn, args, false); }
+    if (r.status >= 400) throw new Error((r.data && r.data.message) || 'Errore ' + r.status);
+    return r.data;
+  }
 
   // Foto rese pubbliche dal moderatore: link temporanei (1 ora) raggruppati per segnalazione.
   async function publicPhotos(){
@@ -68,6 +79,19 @@ export function createSupabaseBackend(url, key){
       const {data} = await sb.auth.getSession();
       session = data.session;
       sb.auth.onAuthStateChange((event, s) => { session = s; setTimeout(() => onChange(event), 0); });
+      if (isNative()) {
+        const {App} = await import('@capacitor/app');
+        App.addListener('appUrlOpen', async ({url}) => {
+          const link = parseAuthLink(url, APP_SCHEME);
+          if (!link) return;
+          try { const {Browser} = await import('@capacitor/browser'); await Browser.close(); } catch(e) { /* già chiuso */ }
+          if (link.error) return onChange('AUTH_ERROR', link.error);
+          if (!link.code) return;
+          const {error} = await sb.auth.exchangeCodeForSession(link.code);
+          if (error) return onChange('AUTH_ERROR', authErrorMessage(error));
+          if (link.recovery) onChange('PASSWORD_RECOVERY');
+        });
+      }
     },
     user: () => userFrom(session),
     async loadReports(){
@@ -120,11 +144,13 @@ export function createSupabaseBackend(url, key){
       return {needsConfirmation:!data.session};
     },
     async signInGoogle(){
-      const {error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo:redirectTo()}});
+      // Nell'app nativa il login si apre nel browser di sistema e torna all'app con il link it.safetaxi.app://auth.
+      const {data, error} = await sb.auth.signInWithOAuth({provider:'google', options:{redirectTo:redirectTo(), skipBrowserRedirect:isNative()}});
       if (error) fail(error);
+      if (isNative()) { const {Browser} = await import('@capacitor/browser'); await Browser.open({url:data.url}); }
     },
     async resetPassword(email){
-      const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo:redirectTo()});
+      const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo:redirectTo('recovery')});
       if (error) fail(error);
     },
     async updatePassword(password){
@@ -135,7 +161,8 @@ export function createSupabaseBackend(url, key){
     async redeem(){ throw new Error('Riscatto dei premi non ancora disponibile: i premi sono DEMO.'); },
     // ---- tracking live ----
     async startLiveShare(plate){ await ensureSession(); return call('start_ride_share', {p_hours:3, p_plate:plate || null}); },
-    updateLiveShare: (id, p, street) => call('update_ride_share', {p_id:id, p_lat:p.lat, p_lng:p.lng, p_street:street || null}),
+    // Nell'app nativa con schermo spento Android rallenta le richieste della WebView: si usa il client HTTP nativo.
+    updateLiveShare: (id, p, street) => (isNative() ? nativeRpc : call)('update_ride_share', {p_id:id, p_lat:p.lat, p_lng:p.lng, p_street:street || null}),
     endLiveShare: id => call('end_ride_share', {p_id:id}),
     getLiveShare: token => call('get_ride_share', {p_token:token}),
     async role(){ return userFrom(session) ? (await call('my_role')) || 'utente' : 'utente'; },

@@ -1,0 +1,11 @@
+{
+  "appId": "it.safetaxi.app",
+  "appName": "Safe Taxi",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "useLegacyBridge": true
+  }
+}

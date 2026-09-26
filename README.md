@@ -44,6 +44,21 @@ tests/e2e/          test Playwright (OpenStreetMap simulato): demo.spec.js e sup
 docs/               guide (configurazione dell'accesso)
 ```
 
+## App nativa (Capacitor)
+
+I progetti `android/` e `ios/` usano la stessa app web (`dist/`). Differenze gestite in `src/native/`:
+- posizione durante la corsa anche a schermo spento (plugin `@capacitor-community/background-geolocation`, servizio in primo piano con notifica "Corsa in corso", senza permesso "posizione sempre");
+- login Google e link delle email che tornano all'app con `it.safetaxi.app://auth` (va aggiunto ai Redirect URLs di Supabase);
+- link esterni (WhatsApp, store) aperti fuori dall'app; link del tracking live con l'indirizzo pubblico (`VITE_PUBLIC_URL`).
+
+```bash
+npm run build && npx cap sync          # copia la build web nei progetti nativi
+cd android && ./gradlew assembleDebug  # APK di prova (serve Android SDK e Java 21)
+npx cap open ios                       # su Mac con Xcode
+```
+
+La CI compila l'APK Android a ogni push: si scarica dalla pagina dell'esecuzione su GitHub (Actions → CI → Artifacts → `safetaxi-android-debug`). Il job `ios` verifica che il progetto iOS compili; per installarlo su un iPhone servono un Mac e un account Apple Developer.
+
 ## Database (Supabase)
 
 Lo schema è in `supabase/migrations/`, i dati DEMO per lo sviluppo in `supabase/seed.sql` (generato con `npm run db:seed`, mai da caricare in produzione). L'app legge e scrive sul database tramite `src/backend/supabase.js`.
