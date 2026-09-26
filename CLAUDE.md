@@ -82,7 +82,7 @@ Si sostiene con pubblicità non invasiva.
    - ✅ 2c. Allegati: foto ripulite dai metadati e con volti pixelati sul dispositivo (MediaPipe), bucket privato, verifica lato server (funzione `register-attachment`), video e audio solo ai moderatori, foto pubbliche solo dopo revisione. Targhe sfocate a mano dal moderatore (blocco 2d).
    - ✅ 2b. Autenticazione email/password con conferma, Google e anonima (Apple e Facebook rinviati); app collegata al database.
    - ✅ 2d. Pagina "Moderazione" nell'app (solo moderatori): coda con dati riservati, pubblica/rifiuta con motivo, sfocatura manuale delle targhe, approvazione delle foto, repliche dei tassisti (diritto di replica) verificate dal moderatore.
-   - Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata", pagina che spiega come verifichiamo le recensioni (Omnibus).
+   - ✅ 2e. Misure contro le recensioni fake: email confermata, limiti di frequenza, bollino "corsa verificata" (corsa registrata sul server: almeno 3 minuti e 500 m, velocità plausibili, entro 24 ore, una segnalazione per corsa, targa coincidente; il server tiene solo durata e km), pagina "Come verifichiamo le recensioni" (Omnibus, `#m-verifica`).
    - API ed export SFTP: rinviati.
 3. ✅ Tracking live: link temporaneo (`?live=<token>`, 3 ore, una condivisione attiva per utente); token salvato solo come impronta SHA-256; posizioni cancellate a fine corsa; pagina per chi riceve il link con aggiornamento ogni 8 secondi. Nel browser il GPS si ferma in background: serve l'app nativa (punto 4).
 4. Packaging con Capacitor per iOS e Android (appId `it.safetaxi.app`, da confermare prima della pubblicazione: non si può cambiare dopo)

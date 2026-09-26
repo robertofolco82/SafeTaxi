@@ -12,6 +12,7 @@ import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
+import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
 import {publicBase, openExternal} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
@@ -139,6 +140,7 @@ function openTab(name){
   if (name === 'corsa' && !rideMap) rideMap = makeMap('rideMap', [41.9, 12.5], 6);
   if (name === 'mappa' && !italyMap) initItalyMap();
   if (name === 'profilo') renderProfile();
+  if (name === 'segnala') updateAnonNotice();
   if (name === 'moderazione') renderModeration();
   setTimeout(() => { [homeMap, rideMap, italyMap].forEach(m => m && m.invalidateSize()); }, 80);
 }
@@ -192,7 +194,7 @@ function renderFeed(){
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
     '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
-    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
+    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.rideVerified ? '<span class="badge b-ok">corsa verificata</span>' : '') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') +
     (r.replies || []).map(d => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b> <span class="muted">· verificata dal moderatore</span><br>' + esc(d.body) + '</div>').join('') +
     (!isLocal() && !r.demo ? '<button class="linkbtn" onclick="openReply(\'' + r.id + '\')">Sei il tassista? Replica</button>' : '') + '</div>'
@@ -256,6 +258,15 @@ async function startRide(sim){
   $('#rideBtn').innerHTML = icon('square', {size:16}) + 'Termina corsa'; $('#rideBtn').classList.add('red');
  $('#rideState').textContent = 'In corso'; $('#rideState').className = 'badge b-ok';
   ride.timer = setInterval(updateRideStats, 1000);
+  // Bollino "corsa verificata": il server registra la corsa (durata e km) solo per account con email confermata.
+  if (!sim && canVerifyRide()) {
+    const r = ride;
+    backend.startRide(r.plate).then(id => {
+      r.serverId = id; renderRideVerify();
+      if (id && ride === r && r.path.length) pingRide(r.path[r.path.length - 1]);  // posizione arrivata prima della risposta
+    }).catch(() => {});
+  }
+  renderRideVerify();
   if (!sim) {
     try { ride.stopWatch = await watchRide(onRidePos, err => toast(err.message), {powerSave: isPowerSave()}); }
     catch(e) { toast(e.message); }
@@ -266,6 +277,7 @@ function onRidePos(p){
   const prev = ride.path[ride.path.length-1];
   if (prev) { const d = haversine(prev, p); if (d < 0.015) return; ride.km += d; }
   ride.path.push(p); lastPos = {lat:p.lat, lng:p.lng, ts:Date.now()};
+  pingRide(p);
  $('#rideCoords').textContent = p.lat.toFixed(5) + ', ' + p.lng.toFixed(5);
   if (rideMap) {
     const ll = ride.path.map(x => [x.lat, x.lng]);
@@ -292,8 +304,36 @@ function endRide(){
  $('#rideBtn').innerHTML = icon('play', {size:16}) + 'Inizia corsa'; $('#rideBtn').classList.remove('red');
  $('#rideState').textContent = 'Conclusa'; $('#rideState').className = 'badge';
   lastRide = {durMin: Math.max(1, Math.round((Date.now() - r.start)/60000)), plate: r.plate, city: r.path.length ? nearestCity(r.path[0]).key : null};
+  const lr = lastRide;
+  if (r.serverId) lr.check = backend.endRide(r.serverId)
+    .then(res => { lr.rideId = r.serverId; lr.verified = !!res.verified; lr.endedAt = Date.parse(res.ended_at); })
+    .catch(() => {}).then(() => { lr.check = null; renderRateVerify(); });
+  renderRideVerify();
   stopLiveShare(false);
   openRating();
+}
+const canVerifyRide = () => !isLocal() && !!(DB.user && DB.user.verified);
+function pingRide(p){
+  const r = ride, now = Date.now();
+  if (!r || !r.serverId || !shouldPingRide(r.lastPing, p, now, isPowerSave())) return;
+  r.lastPing = {lat:p.lat, lng:p.lng, ts:now};
+  backend.pingRide(r.serverId, p).catch(() => {});
+}
+const verifyLink = '<button class="linkbtn" style="margin:0" onclick="openModal(\'m-verifica\')">Come funziona</button>';
+function renderRideVerify(){
+  const box = $('#rideVerify');
+  if (!ride || ride.sim || isLocal()) { box.innerHTML = ''; return; }
+  box.innerHTML = ride.serverId
+    ? icon('shield-check', {size:13}) + ' Corsa registrata per il bollino "corsa verificata": il server conserva solo durata e km. ' + verifyLink
+    : canVerifyRide() ? '' : 'Accedi con un account con email confermata per ottenere il bollino "corsa verificata". ' + verifyLink;
+}
+function renderRateVerify(){
+  const lr = lastRide || {}, box = $('#rateVerify');
+  const msg = lr.check ? 'Verifico la corsa…'
+    : lr.rideId && lr.verified && !lr.claimed ? icon('shield-check', {size:14}) + ' Corsa verificata: la valutazione avrà il bollino "corsa verificata".'
+    : lr.rideId && !lr.verified ? 'Corsa troppo breve per il bollino "corsa verificata" (servono almeno ' + RIDE_RULES.minMinutes + ' minuti e ' + RIDE_RULES.minMeters + ' m).'
+    : '';
+  box.innerHTML = msg; box.classList.toggle('hidden', !msg);
 }
 function simulateRide(){
   if (ride) return toast('Termina prima la corsa in corso');
@@ -404,16 +444,20 @@ function openRating(){
  starPicker('rateRide', v => rateState.ride = v);
  $('#rateIssue').innerHTML = '<option value="positiva">Nessun problema</option>' + NEG.map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
   $('#rateCost').value = ''; $('#rateComment').value = '';
+  renderRateVerify();
   openModal('m-rate');
 }
 async function submitRating(){
   if (!rateState.driver || !rateState.ride) return toast('Dai un voto al tassista e alla corsa');
   const lr = lastRide || {}, cost = parseFloat($('#rateCost').value), pos = italianPosition(lastPos);
   const plate = /^[A-Z]{2}\d{3}[A-Z]{2}$/.test(lr.plate || '') ? lr.plate : null;
+  if (lr.check) await lr.check;
+  const rideId = rideIdForReport(lr, Date.now());
   try {
-    const res = await backend.submitRideRating({city: lr.city || (lastPos ? nearestCity(lastPos).key : 'roma'),
+    const res = await backend.submitRideRating({rideId,city: lr.city || (lastPos ? nearestCity(lastPos).key : 'roma'),
       driverRating:rateState.driver, rideRating:rateState.ride, type:$('#rateIssue').value, comment:$('#rateComment').value.trim(),
       plate, cost: isNaN(cost) ? null : cost, duration: lr.durMin || null, lat:pos.lat, lng:pos.lng});
+    if (rideId) lr.claimed = true;
     closeModal('m-rate'); await afterSubmit();
     toast('Grazie! ' + sentMessage(res, 'Valutazione'));
   } catch(e) { toast(e.message); }
@@ -497,11 +541,13 @@ async function submitReport(e){
   if (attachments.some(a => a.processing)) return toast('Attendi: sto preparando le foto');
   const n = attachments.length, pos = italianPosition(reportGeo), btn = f.querySelector('button[type=submit]');
   submitting = true; if (btn) btn.disabled = true;
+  const rideId = rideIdForReport(lastRide, Date.now());
   try {
-    const res = await backend.submitReport({name:d.name.trim(), license:d.licenza, plate:normPlate(d.targa), city:d.city,
+    const res = await backend.submitReport({rideId,name:d.name.trim(), license:d.licenza, plate:normPlate(d.targa), city:d.city,
       from:(d.from || '').trim(), to:(d.to || '').trim(), type:d.type, rating:reportRating, description:d.description.trim(),
       cost: d.cost ? parseFloat(d.cost) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
       attachments:n, files:attachments.map(a => ({kind:a.kind, blob:a.file, faces:a.faces})), lat:pos.lat, lng:pos.lng});
+    if (rideId) lastRide.claimed = true;
     attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
     f.reset(); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
     await afterSubmit(); openTab('home');
@@ -513,6 +559,9 @@ function updateAnonNotice(){
  $('#anonNotice').innerHTML = DB.user
     ? icon('circle-check-big', {size:14}) + (isLocal() ? 'Segnalazione verificata: concorre ai rating e vale punti.' : 'Segnalazione verificata: dopo la moderazione concorre ai rating e vale punti.')
     : icon('user', {size:14}) + 'Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la moderazione') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
+  const rid = rideIdForReport(lastRide, Date.now());
+  $('#reportRide').innerHTML = rid ? icon('shield-check', {size:14}) + ' Collegata alla corsa conclusa alle ' + hhmm(lastRide.endedAt) + ': se la targa coincide con quella indicata all\'inizio della corsa, avrà il bollino "corsa verificata".' : '';
+  $('#reportRide').classList.toggle('hidden', !rid);
   const i = document.querySelector('#reportForm [name=name]');
   if (DB.user && i && !i.value) i.value = DB.user.name;
 }
@@ -872,7 +921,7 @@ function modReportCard(r){
   const city = CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key;
   return '<div class="card" data-report="' + r.id + '"><div class="row between"><b>' + (TYPES[r.type] || '') + ' · ' + esc(city) + '</b><span class="muted">' + ago(Date.parse(r.created_at)) + '</span></div>' +
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px">' + (r.kind === 'valutazione_corsa' ? icon('star', {size:13}) + 'Valutazione di fine corsa' : icon('file-text', {size:13}) + 'Segnalazione') + ' ' +
-    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + '</span>' + starsHtml(r.rating) + '</div>' +
+    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.ride_verified ? ' <span class="badge b-ok">corsa verificata</span>' : '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<p style="font-size:14px;margin:6px 0">' + esc(r.description) + '</p>' +
     kv('Segnalatore', r.reporter_name || '—') + kv('Targa', r.plate || '—') + kv('Licenza', r.license || '—') +
     (r.from_place || r.to_place ? kv('Tratta', (r.from_place || '…') + ' → ' + (r.to_place || '…')) : '') +

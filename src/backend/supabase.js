@@ -104,7 +104,7 @@ export function createSupabaseBackend(url, key){
       await ensureSession();
       const {data: reportId, error} = await sb.rpc('submit_report', {p_city:d.city, p_type:d.type, p_rating:d.rating, p_description:d.description,
         p_reporter_name:d.name, p_plate:d.plate, p_license:d.license, p_from:d.from || null, p_to:d.to || null,
-        p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng});
+        p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng, p_ride_id:d.rideId || null});
       if (error) fail(error);
       const attachmentErrors = await uploadAttachments(reportId, d.files);
       return {verified:verified(), pending:true, points:0, attachmentErrors};
@@ -112,7 +112,7 @@ export function createSupabaseBackend(url, key){
     async submitRideRating(d){
       await ensureSession();
       const {error} = await sb.rpc('submit_ride_rating', {p_city:d.city, p_driver_rating:d.driverRating, p_ride_rating:d.rideRating,
-        p_type:d.type, p_comment:d.comment || null, p_plate:d.plate || null, p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng});
+        p_type:d.type, p_comment:d.comment || null, p_plate:d.plate || null, p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng, p_ride_id:d.rideId || null});
       if (error) fail(error);
       return {verified:verified(), pending:true, points:0};
     },
@@ -165,6 +165,10 @@ export function createSupabaseBackend(url, key){
     updateLiveShare: (id, p, street) => (isNative() ? nativeRpc : call)('update_ride_share', {p_id:id, p_lat:p.lat, p_lng:p.lng, p_street:street || null}),
     endLiveShare: id => call('end_ride_share', {p_id:id}),
     getLiveShare: token => call('get_ride_share', {p_token:token}),
+    // ---- corsa verificata: solo per account con email confermata; al server vanno solo le posizioni per durata e km ----
+    startRide: plate => verified() ? call('start_ride', {p_plate:plate || null}) : Promise.resolve(null),
+    pingRide: (id, p) => (isNative() ? nativeRpc : call)('ride_ping', {p_id:id, p_lat:p.lat, p_lng:p.lng}),
+    endRide: id => call('end_ride', {p_id:id}),
     hasSession: () => !!session,
     // Cancellazione dell'account (anche anonimo): contenuti non pubblicati, file, punti, profilo e accesso.
     async deleteAccount(){
