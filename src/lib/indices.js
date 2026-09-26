@@ -4,13 +4,14 @@ import {haversine, normPlate, maskPlate} from './utils.js';
 
 // Termometro 0–100: solo segnalazioni verificate, peso dimezzato ogni 90 giorni
 export function indexOf(reps, now = Date.now()){ let w = 0, s = 0; reps.forEach(r => { if (!r.verified) return; const wt = Math.pow(0.5, ((now - r.createdAt)/864e5)/90); w += wt; s += wt*(r.rating-1)*25; }); return w ? Math.round(s/w) : null; }
+// k: chiave semantica dell'umore, mappata su un'icona in src/app.js (mai un'emoji nella logica pura).
 export function mood(v){
-  if (v == null) return {e:'🤷', l:'Dati insufficienti', c:'#94a3b8'};
-  if (v < 35) return {e:'😡', l:'Critico', c:'#dc2626'};
-  if (v < 50) return {e:'😟', l:'Scarso', c:'#f97316'};
-  if (v < 65) return {e:'😐', l:'Così così', c:'#eab308'};
-  if (v < 80) return {e:'🙂', l:'Buono', c:'#22c55e'};
-  return {e:'😄', l:'Ottimo', c:'#16a34a'};
+  if (v == null) return {k:'insufficiente', l:'Dati insufficienti', c:'#94a3b8'};
+  if (v < 35) return {k:'critico', l:'Critico', c:'#dc2626'};
+  if (v < 50) return {k:'scarso', l:'Scarso', c:'#f97316'};
+  if (v < 65) return {k:'cosicosi', l:'Così così', c:'#eab308'};
+  if (v < 80) return {k:'buono', l:'Buono', c:'#22c55e'};
+  return {k:'ottimo', l:'Ottimo', c:'#16a34a'};
 }
 export function perMinOf(reps){ let c = 0, d = 0; reps.forEach(r => { if (r.cost > 0 && r.duration > 0) { c += r.cost; d += r.duration; } }); return d > 0 ? c/d : null; }
 export function nearestCity(p){ let best = 'roma', bd = 1e9; Object.keys(CITIES).forEach(k => { const d = haversine(p, CITIES[k]); if (d < bd) { bd = d; best = k; } }); return {key:best, dist:bd}; }

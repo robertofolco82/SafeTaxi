@@ -18,9 +18,12 @@
     "db:seed": "node scripts/generate-seed.mjs"
   },
   "dependencies": {
+    "@fontsource/inter": "^5.3.0",
+    "@fontsource/plus-jakarta-sans": "^5.3.0",
     "@mediapipe/tasks-vision": "^1.0.1",
     "@supabase/supabase-js": "^2.117.2",
-    "leaflet": "^1.9.4"
+    "leaflet": "^1.9.4",
+    "lucide-static": "^1.48.0"
   },
   "devDependencies": {
     "@playwright/test": "1.56.1",

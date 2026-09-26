@@ -114,7 +114,7 @@ test('registrazione con conferma email, segnalazione verificata, punti alla pubb
 
   // Link di conferma dall'email: l'app completa l'accesso al ritorno.
   await page.goto(await lastEmailLink(email, 'Confirm'));
-  await expect(page.locator('#profileBtn')).toHaveText('🙂');
+  await expect(page.locator('#profileBtn')).toHaveAttribute('data-auth', 'in');
   await page.locator('#profileBtn').click();
   await expect(page.locator('#profileBox')).toContainText(email);
   await expect(page.locator('#profileBox')).toContainText('verificato');
@@ -171,7 +171,7 @@ test('allegati: foto ripulita e audio caricati, verificati dal server; la foto a
   const description = `Allegati ${Date.now()}: tassista al telefono per tutta la corsa, audio e foto.`;
   await page.getByRole('button', {name: /Segnala/}).click();
   await page.setInputFiles('#gallery', 'tests/fixtures/volto-con-gps.jpg');
-  await expect(page.locator('#thumbs .faces')).toHaveText('😶 1', {timeout: 30000});
+  await expect(page.locator('#thumbs .faces')).toHaveText('1', {timeout: 30000});
   await page.setInputFiles('#micAudio', {name: 'registrazione.wav', mimeType: 'audio/wav', buffer: wav()});
   await expect(page.locator('#thumbs .thumb')).toHaveCount(2);
   await page.fill('#reportForm [name=name]', 'Paolo Neri');

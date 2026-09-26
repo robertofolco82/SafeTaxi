@@ -2,10 +2,11 @@
    Le regole di calcolo pure stanno in ./lib e sono coperte dai test.
    I dati arrivano dal backend (./backend): Supabase, oppure demo locale se non configurato. */
 import L from 'leaflet';
-import {CITIES, APPS, COOPS, STORES, TYPES, NEG, FILTERS, REWARDS, OCCUPANCY} from './lib/config.js';
-import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, stars} from './lib/utils.js';
+import {CITIES, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS, OCCUPANCY} from './lib/config.js';
+import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, starCount} from './lib/utils.js';
 import {seedReports} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
+import {icon} from './lib/icons.js';
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
 import {STATUS_LABELS, italianPosition} from './lib/remote.js';
 import {createBackend} from './backend/index.js';
@@ -17,6 +18,20 @@ const $$ = s => Array.from(document.querySelectorAll(s));
 function toast(msg){ const t = $('#toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 2800); }
 const isIOS = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const isAndroid = () => /android/i.test(navigator.userAgent);
+
+/* ================= ICONE ================= */
+// Sostituisce ogni <span data-icon="nome" data-icon-size="N"> del markup statico con l'SVG di src/lib/icons.js.
+function mountIcons(root){
+  Array.from((root || document).querySelectorAll('[data-icon]')).forEach(el => {
+    el.innerHTML = icon(el.dataset.icon, {size: +el.dataset.iconSize || 18});
+  });
+}
+// Umore del Termometro (v. src/lib/indices.js): la logica pura restituisce solo una chiave, mai un'icona.
+const MOOD_ICON = {insufficiente:'circle-help', critico:'angry', scarso:'frown', cosicosi:'meh', buono:'smile', ottimo:'laugh'};
+function starsHtml(n){
+  const filled = starCount(n);
+  return '<span class="stars">' + Array.from({length:5}, (_, i) => icon('star', {size:14, className: i < filled ? 'on' : ''})).join('') + '</span>';
+}
 
 /* ================= STORAGE ================= */
 // Demo locale: tutto nel browser (DB_KEY). Supabase: nel browser restano solo le preferenze (PREFS_KEY).
@@ -70,8 +85,8 @@ function initBattery(){
 function applyPower(){
  document.body.classList.toggle('powersave', isPowerSave());
   const el = $('#batteryBanner');
-  if (autoPowerSave()) { el.textContent = '🔋 Batteria al ' + Math.round(battery.level*100) + '%: risparmio energetico attivo.'; el.classList.remove('hidden'); }
-  else if (DB.powerSave) { el.textContent = '🔋 Risparmio energetico attivo (manuale).'; el.classList.remove('hidden'); }
+  if (autoPowerSave()) { el.innerHTML = icon('battery-low', {size:14}) + ' Batteria al ' + Math.round(battery.level*100) + '%: risparmio energetico attivo.'; el.classList.remove('hidden'); }
+  else if (DB.powerSave) { el.innerHTML = icon('battery-charging', {size:14}) + ' Risparmio energetico attivo (manuale).'; el.classList.remove('hidden'); }
   else el.classList.add('hidden');
 }
 function setPowerSave(v){ DB.powerSave = !!v; saveDB(); applyPower(); }
@@ -152,7 +167,7 @@ function renderThermo(){
   const ver = DB.reports.filter(r => r.verified).length;
  $('#thermo').innerHTML =
     '<div class="muted">Termometro Safe Taxi · Italia</div>' +
-    '<div class="emo">' + m.e + '</div>' +
+    '<div class="mood-icon">' + icon(MOOD_ICON[m.k], {size:52}) + '</div>' +
     '<div class="val" style="color:' + m.c + '">' + (v == null ? '—' : v) + '<span style="font-size:16px;color:var(--mut)">/100</span></div>' +
     '<div style="font-weight:700">' + m.l + '</div>' +
     '<div class="bar"><i style="left:' + (v == null ? 50 : v) + '%"></i></div>' +
@@ -171,10 +186,10 @@ function renderFeed(){
   $('#feed').innerHTML = list.length ? list.map(r =>
     '<div class="feed-item ' + (r.type === 'positiva' ? 'pos' : 'neg') + '">' +
     '<div class="row between"><b>' + esc(CITIES[r.city] ? CITIES[r.city].n : r.city) + '</b><span class="muted">' + ago(r.createdAt) + '</span></div>' +
-    '<div class="row between" style="margin:4px 0"><span style="font-size:12px">' + (TYPES[r.type] || '') + '</span><span class="stars">' + stars(r.rating) + '</span></div>' +
+    '<div class="row between" style="margin:4px 0"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<div style="font-size:13px">' + esc(r.description) + '</div>' +
-    '<div class="muted" style="margin-top:4px">🚕 ' + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
-    (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? ' · 📎 ' + r.attachments : '') + '</div>' +
+    '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
+    (r.verified ? '<span class="badge b-ok">' + icon('shield-check', {size:11}) + 'verificata</span>' : '<span class="badge">anonima</span>') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') + '</div>'
   ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
 }
@@ -223,7 +238,7 @@ function pickDest(i){
     '<div class="kv"><span>Tempo stimato</span><b>' + Math.round(e.min) + ' min</b></div>' +
     '<div class="kv"><span>Costo stimato</span><b>' + fmtEur(e.lo) + ' – ' + fmtEur(e.hi) + '</b></div>' +
     '<div class="muted">Base: ' + esc(e.basis) + '. Distanza in linea d’aria × 1,3: stima indicativa, non vincolante.</div>' +
-    '<button class="btn sm" style="margin-top:8px" onclick="openTab(\'prenota\')">📞 Prenota un taxi</button></div>';
+    '<button class="btn sm" style="margin-top:8px" onclick="openTab(\'prenota\')">' + icon('phone', {size:14}) + 'Prenota un taxi</button></div>';
 }
 
 /* ================= CORSA ================= */
@@ -233,7 +248,7 @@ async function startRide(sim){
   if (!rideMap) rideMap = makeMap('rideMap', [41.9, 12.5], 6);
   if (rideLine) rideLine.setLatLngs([]);
   ride = {start:Date.now(), path:[], km:0, watch:null, timer:null, simTimer:null, sim:!!sim, plate: normPlate($('#lookupInput').value)};
- $('#rideBtn').textContent = '⏹️ Termina corsa'; $('#rideBtn').classList.add('red');
+ $('#rideBtn').innerHTML = icon('square', {size:16}) + 'Termina corsa'; $('#rideBtn').classList.add('red');
  $('#rideState').textContent = 'In corso'; $('#rideState').className = 'badge b-ok';
   ride.timer = setInterval(updateRideStats, 1000);
   if (!sim) {
@@ -272,7 +287,7 @@ function endRide(){
   if (ride.watch != null) navigator.geolocation.clearWatch(ride.watch);
  clearInterval(ride.timer); if (ride.simTimer) clearInterval(ride.simTimer);
   const r = ride; ride = null;
- $('#rideBtn').textContent = '▶️ Inizia corsa'; $('#rideBtn').classList.remove('red');
+ $('#rideBtn').innerHTML = icon('play', {size:16}) + 'Inizia corsa'; $('#rideBtn').classList.remove('red');
  $('#rideState').textContent = 'Conclusa'; $('#rideState').className = 'badge';
   lastRide = {durMin: Math.max(1, Math.round((Date.now() - r.start)/60000)), plate: r.plate, city: r.path.length ? nearestCity(r.path[0]).key : null};
   openRating();
@@ -301,7 +316,7 @@ async function doLookup(){
     box.innerHTML = '<div class="note">Storico insufficiente: ' + d.verified_count + ' segnalazioni verificate (minimo ' + d.min_required + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
   }
   const crit = Object.keys(d.issues || {}).map(k => TYPES[k] + ' ×' + d.issues[k]).join(', ') || 'nessuna';
-  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b>🚕 ' + esc(maskPlate(q)) + '</b><span class="stars">' + stars(d.avg_rating) + '</span></div>' +
+  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b style="display:flex;align-items:center;gap:5px">' + icon('car-taxi-front', {size:15}) + esc(maskPlate(q)) + '</b>' + starsHtml(d.avg_rating) + '</div>' +
     '<div class="kv"><span>Rating medio</span><b>' + fmtNum(d.avg_rating, 1) + ' / 5</b></div>' +
     '<div class="kv"><span>Segnalazioni verificate</span><b>' + d.verified_count + '</b></div>' +
     '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>';
@@ -310,7 +325,7 @@ const rateState = {driver:0, ride:0};
 function starPicker(id, onChange){
   const el = document.getElementById(id); el.innerHTML = '';
   for (let i = 1; i <= 5; i++) {
-    const s = document.createElement('span'); s.textContent = '★'; s.dataset.v = i;
+    const s = document.createElement('span'); s.innerHTML = icon('star', {size:30}); s.dataset.v = i;
     s.onclick = () => { onChange(i); Array.from(el.children).forEach(c => c.classList.toggle('on', +c.dataset.v <= i)); };
     el.appendChild(s);
   }
@@ -339,9 +354,9 @@ async function submitRating(){
 // Messaggio dopo un invio: con Supabase la segnalazione passa dalla moderazione e i punti arrivano alla pubblicazione.
 function sentMessage(res, what){
   if (res.pending) return res.verified
-    ? what + ' inviata ✅ Sarà pubblicata dopo la moderazione; i punti arrivano alla pubblicazione.'
+    ? what + ' inviata. Sarà pubblicata dopo la moderazione; i punti arrivano alla pubblicazione.'
     : what + ' anonima inviata: in moderazione, non concorre ai rating.';
-  return res.verified ? what + ' inviata ✅ +' + res.points + ' punti' : what + ' anonima inviata: visibile, ma non concorre ai rating';
+  return res.verified ? what + ' inviata: +' + res.points + ' punti' : what + ' anonima inviata: visibile, ma non concorre ai rating';
 }
 async function afterSubmit(){
   if (!isLocal()) { try { DB.myReports = await backend.myReports(); } catch(e) {} }
@@ -380,11 +395,11 @@ async function onFiles(e){
 }
 function renderThumbs(){
  $('#thumbs').innerHTML = attachments.map(a => {
-    const ic = a.processing ? '⏳' : a.kind === 'video' ? '🎥' : a.kind === 'audio' ? '🎙️' : '📄';
+    const ic = icon(a.processing ? 'hourglass' : a.kind === 'video' ? 'video' : a.kind === 'audio' ? 'mic' : 'file-text', {size:24});
     const info = a.processing ? 'Preparo la foto…' : a.kind === 'foto' ? (a.faces ? a.faces + (a.faces === 1 ? ' volto sfocato' : ' volti sfocati') : 'Nessun volto trovato') : 'Visibile solo ai moderatori';
     return '<div class="thumb" title="' + esc(a.name + ' · ' + info) + '">' + (a.url ? '<img src="' + a.url + '" alt="">' : ic) +
-      (a.kind === 'foto' && !a.processing ? '<span class="faces">' + (a.faces ? '😶 ' + a.faces : '✓') + '</span>' : '') +
-      '<button type="button" onclick="removeAtt(\'' + a.id + '\')">✕</button></div>';
+      (a.kind === 'foto' && !a.processing ? '<span class="faces">' + (a.faces ? icon('eye-off', {size:10}) + a.faces : icon('check', {size:10})) + '</span>' : '') +
+      '<button type="button" onclick="removeAtt(\'' + a.id + '\')" aria-label="Rimuovi allegato">' + icon('x', {size:12}) + '</button></div>';
   }).join('');
 }
 function removeAtt(id){ const a = attachments.find(x => x.id === id); if (a && a.url) URL.revokeObjectURL(a.url); attachments = attachments.filter(x => x.id !== id); renderThumbs(); }
@@ -428,8 +443,8 @@ async function submitReport(e){
 }
 function updateAnonNotice(){
  $('#anonNotice').innerHTML = DB.user
-    ? (isLocal() ? '✅ Segnalazione verificata: concorre ai rating e vale punti.' : '✅ Segnalazione verificata: dopo la moderazione concorre ai rating e vale punti.')
-    : '👤 Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la moderazione') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
+    ? icon('circle-check-big', {size:14}) + (isLocal() ? 'Segnalazione verificata: concorre ai rating e vale punti.' : 'Segnalazione verificata: dopo la moderazione concorre ai rating e vale punti.')
+    : icon('user', {size:14}) + 'Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la moderazione') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
   const i = document.querySelector('#reportForm [name=name]');
   if (DB.user && i && !i.value) i.value = DB.user.name;
 }
@@ -486,19 +501,19 @@ async function geocodeCity(q){
     const j = await r.json();
     if (!j[0]) return toast('Città non trovata');
     if (italyMap) italyMap.flyTo([+j[0].lat, +j[0].lon], 12);
- $('#cityStats').innerHTML = '<h3>🏙️ ' + esc(j[0].display_name.split(',')[0]) + '</h3><p class="muted">Città non ancora monitorata: nessuna segnalazione disponibile.</p>';
+ $('#cityStats').innerHTML = '<h3>' + icon('landmark', {size:15}) + esc(j[0].display_name.split(',')[0]) + '</h3><p class="muted">Città non ancora monitorata: nessuna segnalazione disponibile.</p>';
   } catch(e) { toast('Ricerca non disponibile offline'); }
 }
 function renderNational(){
   const v = indexOf(DB.reports), m = mood(v), pm = perMinOf(DB.reports);
   const ranks = Object.keys(CITIES).map(k => ({k, v:indexOf(byCity(k)), n:byCity(k).length})).filter(x => x.v != null).sort((a, b) => b.v - a.v);
   const lic = Object.values(CITIES).reduce((a, c) => a + c.lic, 0);
- $('#nationalStats').innerHTML = '<h3>🇮🇹 Statistiche nazionali</h3>' +
+ $('#nationalStats').innerHTML = '<h3>' + icon('globe', {size:16}) + 'Statistiche nazionali</h3>' +
     '<div class="stats3"><div class="stat"><b style="color:' + m.c + '">' + (v == null ? '—' : v) + '</b><span>Indice 0–100</span></div>' +
     '<div class="stat"><b>' + fmtNum(DB.reports.length) + '</b><span>Segnalazioni</span></div>' +
     '<div class="stat"><b>' + (pm ? fmtEur(pm) : '—') + '</b><span>Costo medio/min</span></div></div>' +
     '<h3 style="margin-top:14px">Classifica città</h3>' +
-    ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + mood(x.v).e + ' ' + CITIES[x.k].n + '</span><b>' + x.v + '/100 <span class="muted">(' + x.n + ')</span></b></div>').join('') +
+    ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + CITIES[x.k].n + '</span><b style="display:flex;align-items:center;gap:5px;color:' + mood(x.v).c + '">' + icon(MOOD_ICON[mood(x.v).k], {size:14}) + x.v + '/100 <span class="muted">(' + x.n + ')</span></b></div>').join('') +
     '<div class="muted" style="margin-top:6px">Licenze nelle città monitorate: ' + fmtNum(lic) + ' <span class="badge b-demo">demo</span></div>';
 }
 function renderCityStats(k){
@@ -509,7 +524,7 @@ function renderCityStats(k){
   const ratio = c.dem/c.lic, gross = pm ? pm*60*OCCUPANCY : null;
   const rc = ratio > 6 ? '#dc2626' : ratio > 4 ? '#f97316' : '#16a34a';
  $('#cityStats').innerHTML =
-    '<div class="row between"><h3>🏙️ ' + c.n + '</h3><span class="badge" style="background:' + m.c + ';color:#fff">' + m.e + ' ' + (v == null ? 'n.d.' : v) + '/100</span></div>' +
+    '<div class="row between"><h3>' + icon('landmark', {size:15}) + c.n + '</h3><span class="badge" style="background:' + m.c + ';color:#fff">' + icon(MOOD_ICON[m.k], {size:12}) + (v == null ? 'n.d.' : v) + '/100</span></div>' +
     '<div class="kv"><span>Segnalazioni (verificate)</span><b>' + reps.length + ' (' + reps.filter(r => r.verified).length + ')</b></div>' +
     '<div class="kv"><span>Licenze taxi</span><b>' + fmtNum(c.lic) + ' <span class="badge b-demo">demo</span></b></div>' +
     '<div class="kv"><span>Richieste giornaliere stimate</span><b>' + fmtNum(c.dem) + ' <span class="badge b-demo">demo</span></b></div>' +
@@ -526,22 +541,22 @@ function renderCityStats(k){
 let bookFilter = 'all';
 function initBook(){
  $('#bookCity').innerHTML = Object.keys(CITIES).map(k => '<option value="' + k + '">' + CITIES[k].n + '</option>').join('');
- $('#bookFilters').innerHTML = Object.keys(FILTERS).map(f => '<button class="chip' + (f === 'all' ? ' on' : '') + '" data-bf="' + f + '" onclick="setBookFilter(\'' + f + '\')">' + FILTERS[f] + '</button>').join('');
+ $('#bookFilters').innerHTML = Object.keys(FILTERS).map(f => '<button class="chip' + (f === 'all' ? ' on' : '') + '" data-bf="' + f + '" onclick="setBookFilter(\'' + f + '\')">' + (FILTER_ICONS[f] ? icon(FILTER_ICONS[f], {size:13}) : '') + FILTERS[f] + '</button>').join('');
   renderBook();
 }
 function setBookFilter(f){ bookFilter = f; $$('[data-bf]').forEach(b => b.classList.toggle('on', b.dataset.bf === f)); renderBook(); }
 const passes = x => bookFilter === 'all' ? true : bookFilter === 'rec' ? isRec(x) : (x.f || []).indexOf(bookFilter) >= 0;
 function coopCard(x, priority){
   const rec = isRec(x);
-  const st = x.st != null ? '<span class="stars">' + stars(x.st) + '</span> <b>' + fmtNum(x.st, 1) + '</b> <span class="muted">(' + x.rv + ' recensioni Safe Taxi)</span>' : '<span class="muted">Recensioni insufficienti</span>';
+  const st = x.st != null ? starsHtml(x.st) + ' <b>' + fmtNum(x.st, 1) + '</b> <span class="muted">(' + x.rv + ' recensioni Safe Taxi)</span>' : '<span class="muted">Recensioni insufficienti</span>';
   const ext = x.ext ? '<div class="muted">' + esc(x.ext.src) + ': ' + fmtNum(x.ext.v, 1) + '/5</div>' : '';
   const action = x.tel
-    ? '<button class="btn sm" data-tel="' + x.tel + '" data-name="' + esc(x.n) + '" onclick="callNumber(this.dataset.tel, this.dataset.name)">📞 ' + fmtTel(x.tel) + '</button>'
-    : '<button class="btn sm" onclick="openStore(\'' + x.store + '\')">📲 Apri o scarica</button>';
-  return '<div class="card" style="' + (rec ? 'border:2px solid #facc15;background:#fffdf3' : '') + '">' +
-    '<div class="row between"><b>' + esc(x.n) + (priority ? ' <span class="badge b-ok">Priorità</span>' : '') + '</b>' + (rec ? '<span class="badge rec">🏆 RECOMMENDED</span>' : '') + '</div>' +
-    '<div style="margin:6px 0;font-size:13px">' + st + '</div>' + ext +
-    '<div class="chips" style="margin:6px 0">' + (x.f || []).map(f => '<span class="badge">' + (FILTERS[f] || f) + '</span>').join('') + '</div>' +
+    ? '<button class="btn sm" data-tel="' + x.tel + '" data-name="' + esc(x.n) + '" onclick="callNumber(this.dataset.tel, this.dataset.name)">' + icon('phone-call', {size:14}) + fmtTel(x.tel) + '</button>'
+    : '<button class="btn sm" onclick="openStore(\'' + x.store + '\')">' + icon('smartphone', {size:14}) + 'Apri o scarica</button>';
+  return '<div class="card" style="' + (rec ? 'border:2px solid ' + 'var(--acc)' + ';background:#FFFCEF' : '') + '">' +
+    '<div class="row between"><b>' + esc(x.n) + (priority ? ' <span class="badge b-ok">Priorità</span>' : '') + '</b>' + (rec ? '<span class="badge rec">' + icon('trophy', {size:12}) + 'RECOMMENDED</span>' : '') + '</div>' +
+    '<div style="margin:6px 0;font-size:13px;display:flex;align-items:center;gap:4px">' + st + '</div>' + ext +
+    '<div class="chips" style="margin:6px 0">' + (x.f || []).map(f => '<span class="badge">' + (FILTER_ICONS[f] ? icon(FILTER_ICONS[f], {size:11}) : '') + (FILTERS[f] || f) + '</span>').join('') + '</div>' +
     (x.d ? '<div class="muted" style="margin-bottom:8px">' + esc(x.d) + '</div>' : '') + action + '</div>';
 }
 function renderBook(){
@@ -549,24 +564,24 @@ function renderBook(){
   const apps = APPS.filter(passes);
   const all = COOPS[k] || [], coops = all.filter(passes).sort((a, b) => (b.st || 0) - (a.st || 0));
   let html = apps.map(x => coopCard(x, x.id === 'uber')).join('');
-  html += '<h3 style="margin:14px 2px 8px">🏢 Cooperative a ' + CITIES[k].n + '</h3>';
+  html += '<h3 style="margin:14px 2px 8px">' + icon('building-2', {size:15}) + 'Cooperative a ' + CITIES[k].n + '</h3>';
   html += coops.length ? coops.map(x => coopCard(x, false)).join('') : '<div class="card muted">' + (all.length ? 'Nessuna cooperativa corrisponde al filtro.' : 'Cooperative di questa città non ancora censite.') + '</div>';
-  html += '<div class="card"><h3>🏆 Cosa significa RECOMMENDED</h3><div style="font-size:13px;line-height:1.5">Il bollo è assegnato automaticamente a chi ha, sulle esperienze degli utenti Safe Taxi verificati: valutazione media pari o superiore a 4,0 su 5; almeno 20 recensioni negli ultimi 12 mesi. Il calcolo è aggiornato ogni mese. Il bollo non è acquistabile e si perde se i requisiti non sono più rispettati. La voce "Priorità" indica il posizionamento in elenco: se deriva da un accordo commerciale, viene indicata come "Sponsorizzato".</div></div>';
+  html += '<div class="card"><h3>' + icon('trophy', {size:16}) + 'Cosa significa RECOMMENDED</h3><div style="font-size:13px;line-height:1.5">Il bollo è assegnato automaticamente a chi ha, sulle esperienze degli utenti Safe Taxi verificati: valutazione media pari o superiore a 4,0 su 5; almeno 20 recensioni negli ultimi 12 mesi. Il calcolo è aggiornato ogni mese. Il bollo non è acquistabile e si perde se i requisiti non sono più rispettati. La voce "Priorità" indica il posizionamento in elenco: se deriva da un accordo commerciale, viene indicata come "Sponsorizzato".</div></div>';
   html += '<div class="muted" style="padding:0 4px 10px">Valutazioni demo. Numeri di telefono da verificare con le cooperative prima della pubblicazione.</div>';
  $('#bookList').innerHTML = html;
 }
-async function callNumber(tel, name){ if (await confirmDialog('Chiamare ' + name + '?', 'Verrà avviata una chiamata al numero ' + fmtTel(tel) + ' fuori dall’app.', '📞 Chiama')) location.href = 'tel:' + tel; }
+async function callNumber(tel, name){ if (await confirmDialog('Chiamare ' + name + '?', 'Verrà avviata una chiamata al numero ' + fmtTel(tel) + ' fuori dall’app.', 'Chiama')) location.href = 'tel:' + tel; }
 
 /* ================= SOS E CONDIVISIONE ================= */
 async function openSOS(){
-  openModal('m-sos'); $('#sosLoc').textContent = '📍 Rilevo la posizione…';
+  openModal('m-sos'); $('#sosLoc').innerHTML = icon('map-pin', {size:13}) + ' Rilevo la posizione…';
   try {
     const p = (lastPos && Date.now() - (lastPos.ts || 0) < 60000) ? lastPos : await getPos(true);
     const lbl = await reverseGeocode(p, true);
- $('#sosLoc').innerHTML = '📍 <b>' + esc(lbl || 'Posizione rilevata') + '</b><br><span class="muted">' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + (p.acc ? ' · precisione ±' + Math.round(p.acc) + ' m' : '') + '</span>';
-  } catch(e) { $('#sosLoc').textContent = '📍 Posizione non disponibile: comunica a voce dove ti trovi.'; }
+ $('#sosLoc').innerHTML = icon('map-pin', {size:13}) + ' <b>' + esc(lbl || 'Posizione rilevata') + '</b><br><span class="muted">' + p.lat.toFixed(5) + ', ' + p.lng.toFixed(5) + (p.acc ? ' · precisione ±' + Math.round(p.acc) + ' m' : '') + '</span>';
+  } catch(e) { $('#sosLoc').innerHTML = icon('map-pin', {size:13}) + ' Posizione non disponibile: comunica a voce dove ti trovi.'; }
 }
-async function call112(){ if (await confirmDialog('Chiamare il 112?', 'Stai per chiamare il Numero Unico di Emergenza. Usalo solo in caso di reale emergenza.', '📞 Chiama il 112')) location.href = 'tel:112'; }
+async function call112(){ if (await confirmDialog('Chiamare il 112?', 'Stai per chiamare il Numero Unico di Emergenza. Usalo solo in caso di reale emergenza.', 'Chiama il 112')) location.href = 'tel:112'; }
 let shareSOS = false, shareEdited = false, shareP = null;
 async function openShare(fromSOS){
   shareSOS = !!fromSOS; shareEdited = false;
@@ -621,28 +636,28 @@ function renderProfile(){
   const bat = battery ? Math.round(battery.level*100) + '%' + (battery.charging ? ' in carica' : '') : 'non rilevabile su questo dispositivo';
  $('#profileBox').innerHTML =
     '<div class="card">' + (u
-      ? '<h2>🙂 ' + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider === 'google' ? 'Google' : u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
-      : '<h2>👤 Ospite</h2><p class="muted">Senza account puoi inviare valutazioni e usare l’SOS. Per far contare le segnalazioni nei rating e accumulare punti serve l’accesso.</p><button class="btn" style="margin-top:10px" onclick="openModal(\'m-login\')">Accedi o registrati</button>') + '</div>' +
+      ? '<h2>' + icon('user-round-check', {size:19}) + esc(u.name) + '</h2><p class="muted">Accesso con ' + esc(u.provider === 'google' ? 'Google' : u.provider) + (u.email ? ' · ' + esc(u.email) : '') + ' <span class="badge b-ok">verificato</span></p><button class="btn sec sm" style="margin-top:10px" onclick="logout()">Esci</button>'
+      : '<h2>' + icon('user', {size:19}) + 'Ospite</h2><p class="muted">Senza account puoi inviare valutazioni e usare l’SOS. Per far contare le segnalazioni nei rating e accumulare punti serve l’accesso.</p><button class="btn" style="margin-top:10px" onclick="openModal(\'m-login\')">Accedi o registrati</button>') + '</div>' +
     myReportsCard() +
-    '<div class="card"><h3>🎁 Punti e premi</h3><div class="thermo"><div class="val">' + fmtNum(DB.points) + '</div><div class="muted">Livello <b>' + lv.name + '</b>' + (lv.next ? ' · ' + (lv.next.min - DB.points) + ' punti a ' + lv.next.name : '') + '</div></div>' +
+    '<div class="card"><h3>' + icon('gift', {size:16}) + 'Punti e premi</h3><div class="thermo"><div class="val">' + fmtNum(DB.points) + '</div><div class="muted">Livello <b>' + lv.name + '</b>' + (lv.next ? ' · ' + (lv.next.min - DB.points) + ' punti a ' + lv.next.name : '') + '</div></div>' +
     '<div class="pbar"><span class="p"><i style="width:' + lv.pct + '%;background:var(--pri)"></i></span></div>' +
     '<div class="note">Stessi punti per segnalazioni positive e negative: +50 segnalazione completa, +20 con allegati, +10 valutazione di fine corsa. Si premia la partecipazione, non il giudizio espresso.</div>' +
     REWARDS.map((r, i) => '<div class="kv"><span>' + esc(r.n) + '</span><button class="btn sm' + (DB.points >= r.c ? '' : ' sec') + '" onclick="redeem(' + i + ')">' + fmtNum(r.c) + ' pt</button></div>').join('') +
     (DB.ledger.length ? '<h3 style="margin-top:12px">Movimenti</h3>' + DB.ledger.slice(0, 8).map(l => '<div class="kv"><span>' + esc(l.why) + '</span><b style="color:' + (l.n > 0 ? '#16a34a' : '#dc2626') + '">' + (l.n > 0 ? '+' : '') + l.n + '</b></div>').join('') : '') + '</div>' +
-    '<div class="card"><h3>🆘 Contatti di emergenza</h3>' +
- (DB.contacts.length ? DB.contacts.map((c, i) => '<div class="kv"><span>' + esc(c.name) + ' · ' + esc(c.phone) + '</span><button class="btn sec sm" onclick="removeContact(' + i + ')">✕</button></div>').join('') : '<p class="muted">Nessun contatto salvato.</p>') +
+    '<div class="card"><h3>' + icon('life-buoy', {size:16}) + 'Contatti di emergenza</h3>' +
+ (DB.contacts.length ? DB.contacts.map((c, i) => '<div class="kv"><span>' + esc(c.name) + ' · ' + esc(c.phone) + '</span><button class="btn sec sm" onclick="removeContact(' + i + ')" aria-label="Rimuovi contatto">' + icon('x', {size:13}) + '</button></div>').join('') : '<p class="muted">Nessun contatto salvato.</p>') +
     '<div class="row" style="margin-top:8px"><input id="cName" placeholder="Nome"><input id="cPhone" placeholder="Telefono" inputmode="tel"></div>' +
     '<button class="btn sec" style="margin-top:8px" onclick="addContact()">+ Aggiungi contatto</button></div>' +
-    '<div class="card"><h3>🔋 Energia</h3><div class="kv"><span>Batteria</span><b>' + bat + '</b></div>' +
+    '<div class="card"><h3>' + icon(battery && battery.charging ? 'battery-charging' : battery && battery.level <= 0.2 ? 'battery-low' : 'battery', {size:16}) + 'Energia</h3><div class="kv"><span>Batteria</span><b>' + bat + '</b></div>' +
     '<label class="row" style="margin-top:8px;font-size:14px"><input type="checkbox" style="width:auto"' + (DB.powerSave ? ' checked' : '') + ' onchange="setPowerSave(this.checked)"> Risparmio energetico manuale</label>' +
     '<div class="note">In risparmio: GPS a bassa precisione, nome via aggiornato ogni 60 secondi invece di 20, animazioni disattivate. Si attiva da solo sotto il 20% se il browser espone il livello batteria (Safari su iPhone non lo espone).</div></div>' +
-    '<div class="card"><h3>📦 Dati aperti</h3><p class="muted">Dataset anonimizzato: niente nomi, targhe o licenze; coordinate arrotondate a circa 1 km. In produzione lo stesso formato è servito via API REST e SFTP ai soggetti accreditati.</p>' +
+    '<div class="card"><h3>' + icon('package', {size:16}) + 'Dati aperti</h3><p class="muted">Dataset anonimizzato: niente nomi, targhe o licenze; coordinate arrotondate a circa 1 km. In produzione lo stesso formato è servito via API REST e SFTP ai soggetti accreditati.</p>' +
     '<div class="row" style="margin-top:8px"><button class="btn sec" onclick="exportData(\'json\')">JSON</button><button class="btn sec" onclick="exportData(\'csv\')">CSV</button></div></div>' +
-    '<div class="card"><h3>🔒 Privacy</h3><button class="btn sec" onclick="openModal(\'m-privacy\')">Leggi l’informativa</button>' + (isLocal() ? '<button class="btn sec" style="margin-top:8px" onclick="resetDemo()">Ripristina dati demo</button>' : '') + '</div>';
+    '<div class="card"><h3>' + icon('lock', {size:16}) + 'Privacy</h3><button class="btn sec" onclick="openModal(\'m-privacy\')">Leggi l’informativa</button>' + (isLocal() ? '<button class="btn sec" style="margin-top:8px" onclick="resetDemo()">Ripristina dati demo</button>' : '') + '</div>';
 }
 function myReportsCard(){
   if (!DB.myReports.length) return '';
-  return '<div class="card"><h3>📝 Le tue segnalazioni</h3>' + DB.myReports.slice(0, 10).map(r =>
+  return '<div class="card"><h3>' + icon('file-text', {size:16}) + 'Le tue segnalazioni</h3>' + DB.myReports.slice(0, 10).map(r =>
     '<div class="kv"><span>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + ' · ' + ago(Date.parse(r.created_at)) +
     (r.rejection_reason ? '<br><span class="muted">Motivo: ' + esc(r.rejection_reason) + '</span>' : '') + '</span>' +
     '<span class="badge' + (r.status === 'pubblicata' ? ' b-ok' : '') + '">' + (STATUS_LABELS[r.status] || r.status) + '</span></div>').join('') +
@@ -668,7 +683,7 @@ async function emailSignup(){
   const v = loginFields(); if (!v) return;
   try {
     const r = await backend.signUp(v.em, v.pw);
-    if (r.needsConfirmation) { $('#loginPwd').value = ''; $('#loginNote').textContent = '📧 Ti abbiamo inviato un\'email a ' + v.em + ': apri il link per confermare l\'account.'; toast('Controlla la tua email per confermare'); return; }
+    if (r.needsConfirmation) { $('#loginPwd').value = ''; $('#loginNote').innerHTML = icon('mail', {size:13}) + ' Ti abbiamo inviato un\'email a ' + esc(v.em) + ': apri il link per confermare l\'account.'; toast('Controlla la tua email per confermare'); return; }
     await afterLogin();
   } catch(e) { toast(e.message); }
 }
@@ -678,12 +693,12 @@ async function googleLogin(){
 async function forgotPassword(){
   const em = $('#loginEmail').value.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return toast('Scrivi prima la tua email');
-  try { await backend.resetPassword(em); $('#loginNote').textContent = '📧 Se esiste un account per ' + em + ', riceverai un link per scegliere una nuova password.'; } catch(e) { toast(e.message); }
+  try { await backend.resetPassword(em); $('#loginNote').innerHTML = icon('mail', {size:13}) + ' Se esiste un account per ' + esc(em) + ', riceverai un link per scegliere una nuova password.'; } catch(e) { toast(e.message); }
 }
 async function saveNewPassword(){
   const pw = $('#newPwd').value;
   if (pw.length < 8) return toast('Password: minimo 8 caratteri');
-  try { await backend.updatePassword(pw); $('#newPwd').value = ''; closeModal('m-newpwd'); toast('Password aggiornata ✅'); } catch(e) { toast(e.message); }
+  try { await backend.updatePassword(pw); $('#newPwd').value = ''; closeModal('m-newpwd'); toast('Password aggiornata'); } catch(e) { toast(e.message); }
 }
 async function afterLogin(){ closeModal('m-login'); $('#loginPwd').value = ''; await reloadData(); toast(isLocal() ? 'Accesso effettuato (simulato)' : 'Accesso effettuato'); }
 async function logout(){ await backend.signOut(); await reloadData(); }
@@ -726,11 +741,14 @@ function refreshAll(){
   renderThermo(); renderFeed(); renderNational(); refreshItalyMap(); updateAnonNotice();
   if ($('#cityStats').dataset.city) renderCityStats($('#cityStats').dataset.city);
   if ($('#tab-profilo').classList.contains('active')) renderProfile();
- $('#profileBtn').textContent = DB.user ? '🙂' : '👤';
+  const profileBtn = $('#profileBtn');
+  profileBtn.innerHTML = icon(DB.user ? 'user-round-check' : 'user', {size:17});
+  profileBtn.dataset.auth = DB.user ? 'in' : 'out';
 }
 const _renderCityStats = renderCityStats;
 renderCityStats = function(k){ $('#cityStats').dataset.city = k; _renderCityStats(k); };
 async function init(){
+  mountIcons();
   backend = await createBackend(() => DB, saveDB);
   loadDB(); initBattery(); initReportForm(); initBook(); renderNews();
   $('#loginNote').textContent = isLocal()
