@@ -44,8 +44,9 @@ Si sostiene con pubblicità non invasiva.
    - Le segnalazioni anonime non contano nei rating.
 9. Mappa Italia
    - Heatmap dell'insoddisfazione, zoom fino al livello città, ricerca città.
-   - Statistiche nazionali e per città: licenze vs domanda stimata, costo medio al minuto.
-   - Ricavo orario stimato vs reddito medio dichiarato: solo a livello aggregato.
+   - Statistiche nazionali e per città: licenze attive vs fabbisogno calcolato con la metodologia ART (delibera 46/2022), costo medio al minuto.
+   - "Corse al giorno equivalenti ai ricavi dichiarati" (ricavi medi MEF ÷ giorni di servizio ÷ prezzo della corsa tipo da delibera tariffaria) e, a parte, reddito medio dichiarato MEF: solo a livello aggregato, formula e fonti in pagina. Niente ricavo orario stimato (deciso da Roberto).
+   - Fonti ufficiali: sempre l'ultima pubblicazione, uscita da non più di 12 mesi, con fonte, anno di riferimento e data di pubblicazione in pagina; se scaduta, il dato non si mostra. Dettagli in `docs/improvements-app.md`.
 10. Prenota
     - Uber in cima, con link allo store del dispositivo.
     - Poi le cooperative della città, ordinate per rating Safe Taxi. Chiamata con conferma.

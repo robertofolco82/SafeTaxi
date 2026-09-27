@@ -18,7 +18,7 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | da fare |
 | IMP-07 | Nuovo tipo di segnalazione "Taxi non disponibile / attesa lunga" | P3 | sì (nuovo tipo) | proposta |
 
-IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione). Da coordinare con la chat master per non avere due migrazioni in parallelo sulle stesse funzioni.
+IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione). I P1 partono quando la chat master ("Roadmap planning e verifica locale", branch `claude/dreamy-johnson-abhi3m`) ha finito il lavoro in corso: sessione ferma, nessuna pull request aperta, branch allineato a `main`.
 
 ## Dettaglio
 
@@ -38,7 +38,7 @@ Decisione di Roberto:
 - Ricerca del rating prima della corsa: due campi, targa e licenza. Basta uno dei due; si possono compilare entrambi.
 
 Cosa cambia:
-- Oggi c'è un solo campo "targa o licenza" e `get_driver_rating(p_query)` cerca `targa = q oppure licenza = q`.
+- Oggi c'è un solo campo "targa o licenza" e `get_driver_rating(p_query)` cerca `targa = q oppure licenza = q`. Partire dall'ultima versione della funzione (`20260927120000_ricerca_targa.sql`: elenco delle segnalazioni del taxi, limite di 5 ricerche all'ora) e mantenerne le regole.
 - Nuova firma `get_driver_rating(p_plate, p_license)`: con un solo campo cerca su quello; con entrambi cerca le segnalazioni che corrispondono a **tutti e due** (risultato più preciso). Restano la soglia di 5 segnalazioni verificate e la targa mascherata.
 - Frontend: due campi nel riquadro di ricerca; modalità demo in `src/lib/indices.js` allineata.
 
@@ -110,7 +110,8 @@ Proposta, solo con dati ufficiali e una convenzione dichiarata:
 - Giorni di servizio: dal regolamento comunale dei turni, se lo indica; altrimenti una convenzione dichiarata.
 - In pagina si mostra il risultato ("i ricavi dichiarati corrispondono in media a N corse tipo al giorno") con tutti gli ingredienti e le fonti, senza commenti. Chiunque può rifare il calcolo.
 - Il reddito dichiarato si mostra a parte, come dato MEF, senza confronto con stime.
-- Solo livello aggregato; validazione legale prima della pubblicazione. Richiede la modifica del requisito 9 in `CLAUDE.md` (decisione di Roberto).
+- Solo livello aggregato; validazione legale prima della pubblicazione.
+- **Confermato da Roberto** (27/09/2026): requisito 9 di `CLAUDE.md` aggiornato.
 
 ### Da verificare
 - RENT: esiste una consultazione pubblica o un export per comune? Se no, preparare la richiesta FOIA al MIT.
