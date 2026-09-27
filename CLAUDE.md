@@ -99,7 +99,7 @@ Si sostiene con pubblicità non invasiva.
    - Da fare dopo la validazione: testi nell'app, sospensione degli account che abusano (art. 23 DSA). Conservazione: vedi "Decisioni prese".
 
 ## Backlog miglioramenti app
-Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/improvements-app.md`. Consultarlo prima di pianificare un nuovo blocco.
+Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/improvements-app.md`. Consultarlo prima di pianificare un nuovo blocco. Lo sviluppo dei punti del backlog lo fa la chat master, non la chat che raccoglie le richieste (deciso da Roberto il 27/09/2026). I P1 (IMP-01, IMP-02, IMP-05a) sono pronti per partire.
 
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).
