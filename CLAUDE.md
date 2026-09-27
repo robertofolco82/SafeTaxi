@@ -44,8 +44,9 @@ Si sostiene con pubblicità non invasiva.
    - Le segnalazioni anonime non contano nei rating.
 9. Mappa Italia
    - Heatmap dell'insoddisfazione, zoom fino al livello città, ricerca città.
-   - Statistiche nazionali e per città: licenze vs domanda stimata, costo medio al minuto.
-   - Ricavo orario stimato vs reddito medio dichiarato: solo a livello aggregato.
+   - Statistiche nazionali e per città: licenze attive vs fabbisogno calcolato con la metodologia ART (delibera 46/2022), costo medio al minuto.
+   - "Corse al giorno equivalenti ai ricavi dichiarati" (ricavi medi MEF ÷ giorni di servizio ÷ prezzo della corsa tipo da delibera tariffaria) e, a parte, reddito medio dichiarato MEF: solo a livello aggregato, formula e fonti in pagina. Niente ricavo orario stimato (deciso da Roberto).
+   - Fonti ufficiali: sempre l'ultima pubblicazione, uscita da non più di 12 mesi, con fonte, anno di riferimento e data di pubblicazione in pagina; se scaduta, il dato non si mostra. Dettagli in `docs/improvements-app.md`.
 10. Prenota
     - Uber in cima, con link allo store del dispositivo.
     - Poi le cooperative della città, ordinate per rating Safe Taxi. Chiamata con conferma.
@@ -95,6 +96,9 @@ Si sostiene con pubblicità non invasiva.
    - ✅ 5a. Segnalazione di contenuti (DSA artt. 16–17): "Segnala contenuto" su segnalazioni e repliche, decisione motivata del moderatore, esito nel profilo, punti tolti ai contenuti rimossi.
    - 5b. Bozze in `docs/legal/` (informativa, termini, DPIA, cookie e pubblicità, DSA): da validare con un legale e completare (titolare, email di contatto) prima di pubblicarle nell'app.
    - Da fare dopo la validazione: testi nell'app, conservazione delle segnalazioni (proposta 3 anni) e cancellazione di quelle rifiutate, sospensione degli account che abusano (art. 23 DSA).
+
+## Backlog miglioramenti app
+Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/improvements-app.md`. Consultarlo prima di pianificare un nuovo blocco.
 
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).
