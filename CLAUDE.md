@@ -96,6 +96,9 @@ Si sostiene con pubblicità non invasiva.
    - 5b. Bozze in `docs/legal/` (informativa, termini, DPIA, cookie e pubblicità, DSA): da validare con un legale e completare (titolare, email di contatto) prima di pubblicarle nell'app.
    - Da fare dopo la validazione: testi nell'app, conservazione delle segnalazioni (proposta 3 anni) e cancellazione di quelle rifiutate, sospensione degli account che abusano (art. 23 DSA).
 
+## Backlog miglioramenti app
+Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/improvements-app.md`. Consultarlo prima di pianificare un nuovo blocco.
+
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).
 - Backend: Supabase, piano Free per sviluppo e test. Per la produzione valutare il piano Pro (backup, niente pausa per inattività).
