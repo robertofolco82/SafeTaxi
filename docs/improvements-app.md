@@ -18,7 +18,16 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | da fare |
 | IMP-07 | Nuovo tipo di segnalazione "Taxi non disponibile / attesa lunga" | P3 | sì (nuovo tipo) | proposta |
 
-IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione). I P1 partono quando la chat master ("Roadmap planning e verifica locale", branch `claude/dreamy-johnson-abhi3m`) ha finito il lavoro in corso: sessione ferma, nessuna pull request aperta, branch allineato a `main`.
+IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione).
+
+## Chi sviluppa
+Decisione di Roberto (27/09/2026): **tutto lo sviluppo, backlog compreso, lo fa la chat master** ("Roadmap planning e verifica locale"), per non avere due contesti che programmano in parallelo. La chat "Improvements app" raccoglie solo le richieste e le scrive qui.
+
+Regole per chi sviluppa un punto del backlog:
+- Partire sempre dall'ultima versione delle funzioni del database: `submit_report` è in `20260927100000_pubblicazione_automatica.sql` (pubblicazione automatica, `text_flags`, `p_meter`); `get_driver_rating` è in `20260927120000_ricerca_targa.sql` (elenco delle segnalazioni del taxi, limite di ricerche). Le nuove migrazioni ne mantengono tutte le regole.
+- Allineare anche la modalità demo (`src/backend/local.js`, `src/lib/indices.js`), non solo Supabase.
+- A lavoro finito aggiornare lo stato nella tabella qui sopra (`fatto`, con il numero della pull request).
+- Le motivazioni delle decisioni sono nel dettaglio di ogni punto: se una scelta tecnica le contraddice, chiedere a Roberto.
 
 ## Dettaglio
 
@@ -29,7 +38,7 @@ Decisione di Roberto:
 
 Cosa cambia:
 - Frontend: `src/app.js` (validazione della descrizione), `index.html` (placeholder e testo di aiuto).
-- Backend: nuova migrazione che ridefinisce `public.submit_report` (ultima versione in `20260926200000_corsa_verificata.sql`) con la stessa regola; test pgTAP in `supabase/tests/database/01_accessi_e_regole.test.sql` per entrambi i casi.
+- Backend: nuova migrazione che ridefinisce `public.submit_report` (ultima versione in `20260927100000_pubblicazione_automatica.sql`) con la stessa regola, basata su `p_rating`; test pgTAP in `supabase/tests/database/01_accessi_e_regole.test.sql` per entrambi i casi.
 - Restano invariati i 20 caratteri su replica del tassista e segnalazione DSA.
 
 ### IMP-02 — Targa e licenza: obbligatorie nelle recensioni, una delle due nella ricerca
