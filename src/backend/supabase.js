@@ -53,6 +53,12 @@ export function createSupabaseBackend(url, key){
     data.forEach(d => (byReport[d.report_id] = byReport[d.report_id] || []).push({id:d.id, body:d.body, createdAt:Date.parse(d.created_at)}));
     return byReport;
   }
+  // Stato deciso dal database dopo l'invio: pubblicata subito o in revisione.
+  async function statusOf(id){
+    const {data} = await sb.rpc('my_reports');
+    const r = (data || []).find(x => x.id === id);
+    return r ? r.status : 'in_moderazione';
+  }
   const call = async (fn, args) => { const {data, error} = await sb.rpc(fn, args); if (error) fail(error); return data; };
   async function nativeRpc(fn, args, retry = true){
     const {CapacitorHttp} = await import('@capacitor/core');
@@ -104,17 +110,19 @@ export function createSupabaseBackend(url, key){
       await ensureSession();
       const {data: reportId, error} = await sb.rpc('submit_report', {p_city:d.city, p_type:d.type, p_rating:d.rating, p_description:d.description,
         p_reporter_name:d.name, p_plate:d.plate, p_license:d.license, p_from:d.from || null, p_to:d.to || null,
-        p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng, p_ride_id:d.rideId || null});
+        p_cost:d.cost, p_meter:d.meter ?? null, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng, p_ride_id:d.rideId || null});
       if (error) fail(error);
       const attachmentErrors = await uploadAttachments(reportId, d.files);
-      return {verified:verified(), pending:true, points:0, attachmentErrors};
+      const published = await statusOf(reportId) === 'pubblicata';
+      return {verified:verified(), pending:!published, points:published && verified() ? 50 : 0, attachmentErrors};
     },
     async submitRideRating(d){
       await ensureSession();
-      const {error} = await sb.rpc('submit_ride_rating', {p_city:d.city, p_driver_rating:d.driverRating, p_ride_rating:d.rideRating,
+      const {data: id, error} = await sb.rpc('submit_ride_rating', {p_city:d.city, p_driver_rating:d.driverRating, p_ride_rating:d.rideRating,
         p_type:d.type, p_comment:d.comment || null, p_plate:d.plate || null, p_cost:d.cost, p_duration:d.duration, p_lat:d.lat, p_lng:d.lng, p_ride_id:d.rideId || null});
       if (error) fail(error);
-      return {verified:verified(), pending:true, points:0};
+      const published = await statusOf(id) === 'pubblicata';
+      return {verified:verified(), pending:!published, points:published && verified() ? 10 : 0};
     },
     async driverRating(q){
       const {data, error} = await sb.rpc('get_driver_rating', {p_query:q});
@@ -201,6 +209,7 @@ export function createSupabaseBackend(url, key){
         p_name:d.name, p_email:d.email, p_good_faith:d.goodFaith});
     },
     myContentNotices: async () => session ? call('my_content_notices') : [],
+    removeReport: (id, reason) => call('remove_report', {p_id:id, p_reason:reason}),
     resolveContentNotice: (id, remove, reason) => call('resolve_content_notice', {p_id:id, p_remove:remove, p_reason:reason}),
     moderateReply: (id, status, reason) => call('moderate_reply', {p_id:id, p_status:status, p_reason:reason || null}),
     async signedUrls(paths){

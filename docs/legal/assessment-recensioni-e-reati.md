@@ -76,7 +76,7 @@ Ma è la posizione più debole per sostenere di essere un soggetto terzo.
 - la targa resta nell'area riservata e alimenta solo un rating aggregato, visibile con almeno 5 segnalazioni
   verificate.
 
-## 4. Proposta per Safe Taxi
+## 4. Proposta per Safe Taxi (A e B approvati da Roberto il 27/09/2026 e realizzati; C inserito nella bozza dei termini d'uso)
 
 **A. Modello di pubblicazione**, come le grandi piattaforme (da decidere):
 1. Controlli automatici prima della pubblicazione: limiti anti-abuso (già attivi) e filtri su dati personali
@@ -117,8 +117,8 @@ identificabili, e il dato anonimo resta utilizzabile, anche per l'API e l'export
 | Testo, voto, città, data, categoria della segnalazione | Per sempre |
 | Account dell'utente | Finché l'utente non lo cancella |
 | Nome del segnalatore | Finché esiste l'account (serve per la responsabilità dell'autore); cancellato con l'account (già così) |
-| Collegamento con la targa e la licenza (rating individuale) | **Da decidere col legale.** Proposta: 5 anni, pari alla prescrizione civile del danno (art. 2947 c.c.); poi la segnalazione resta nelle statistiche di città e cooperativa, senza targa |
-| Segnalazioni rifiutate | Anonimizzate dopo 12 mesi (restano utili contro gli abusi) |
+| Collegamento con la targa e la licenza (rating individuale) | **Deciso da Roberto (27/09/2026): si conserva**, è parte della recensione. Da motivare in informativa e DPIA (art. 5.1.e, art. 13.2.a GDPR) |
+| Segnalazioni rifiutate | Si conservano (utili contro gli abusi); da motivare come sopra |
 | Dati tecnici (corse, condivisioni, news) | Già così: si cancella solo ciò che non serve più al servizio |
 
 ## Fonti

@@ -13,7 +13,7 @@ insert into public.reports (id, author_id, city_key, type, rating, description, 
   ('10000000-0000-4000-8000-000000000001', 'a1111111-1111-4111-8111-111111111111', 'citta_allegati', 'tariffa', 2, 'In moderazione', 'in_moderazione', now(), false),
   ('10000000-0000-4000-8000-000000000002', 'b2222222-2222-4222-8222-222222222222', 'citta_allegati', 'tariffa', 2, 'Di un altro', 'in_moderazione', now(), true),
   ('10000000-0000-4000-8000-000000000003', 'a1111111-1111-4111-8111-111111111111', 'citta_allegati', 'tariffa', 2, 'Vecchia', 'in_moderazione', now() - interval '2 hours', false),
-  ('10000000-0000-4000-8000-000000000004', 'a1111111-1111-4111-8111-111111111111', 'citta_allegati', 'tariffa', 2, 'Già pubblicata', 'pubblicata', now(), false),
+  ('10000000-0000-4000-8000-000000000004', 'a1111111-1111-4111-8111-111111111111', 'citta_allegati', 'tariffa', 2, 'Già pubblicata', 'pubblicata', now() - interval '2 hours', false),
   ('10000000-0000-4000-8000-000000000005', 'c3333333-3333-4333-8333-333333333333', 'citta_allegati', 'percorso', 2, 'Verificata con foto', 'in_moderazione', now(), true);
 
 create function pg_temp.obj(report text, n int, ext text default 'jpg') returns text language sql as
@@ -34,7 +34,7 @@ select throws_ok($$ insert into storage.objects (bucket_id, name) values ('attac
 select throws_ok($$ insert into storage.objects (bucket_id, name) values ('attachments', pg_temp.obj('10000000-0000-4000-8000-000000000003', 3)) $$,
   '42501', null, 'non si carica dopo un''ora dall''invio');
 select throws_ok($$ insert into storage.objects (bucket_id, name) values ('attachments', pg_temp.obj('10000000-0000-4000-8000-000000000004', 4)) $$,
-  '42501', null, 'non si carica su una segnalazione già pubblicata');
+  '42501', null, 'non si carica su una segnalazione pubblicata da più di un''ora (con la pubblicazione automatica si può entro l''ora)');
 select throws_ok($$ insert into storage.objects (bucket_id, name) values ('attachments', '10000000-0000-4000-8000-000000000001/virus.exe') $$,
   '42501', null, 'nome o estensione non ammessi');
 select lives_ok($$ insert into storage.objects (bucket_id, name, owner_id)

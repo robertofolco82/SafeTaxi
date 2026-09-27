@@ -53,8 +53,10 @@ comunicazione alle associazioni di categoria.]
 
 ## 4. Moderazione e decisioni automatizzate
 
-Ogni segnalazione è letta da un moderatore prima della pubblicazione. Non ci sono decisioni basate
-unicamente su trattamenti automatizzati con effetti giuridici (art. 22). Sul dispositivo, un algoritmo
+Ogni testo passa da controlli automatici (ricerca di insulti, etichette di reato e dati personali di terzi):
+decidono solo se la segnalazione è pubblicata subito o dopo la revisione di un moderatore. Rifiuti e rimozioni
+sono sempre decisi da una persona e motivati: non ci sono decisioni basate unicamente su trattamenti
+automatizzati con effetti giuridici (art. 22). Sul dispositivo, un algoritmo
 (MediaPipe) individua e sfoca i volti nelle foto prima dell'invio: la foto originale non lascia il telefono.
 
 ## 5. Destinatari e fornitori
