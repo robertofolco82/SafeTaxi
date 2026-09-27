@@ -1,5 +1,5 @@
 // Registra un allegato già caricato nel bucket "attachments", dopo averlo verificato:
-// - chi chiama è l'autore della segnalazione, ancora in moderazione;
+// - chi chiama è l'autore della segnalazione, entro un'ora dall'invio (anche se già pubblicata);
 // - formato e dimensione ammessi per il tipo dichiarato;
 // - le foto sono JPEG senza metadati (EXIF/GPS, XMP, IPTC): se ne contengono, il file viene cancellato.
 // Modalità "replace" (solo moderatori): sostituisce una foto con la versione a targhe sfocate, dopo gli stessi controlli.
@@ -65,8 +65,11 @@ Deno.serve(async (req) => {
       !['foto', 'video', 'audio'].includes(kind as string)) return reply(400, {error: 'Richiesta non valida'});
 
   const id = encodeURIComponent(report_id);
-  const [report] = await (await admin(`/rest/v1/reports?id=eq.${id}&select=id,author_id,status`)).json().catch(() => []);
-  if (!report || report.author_id !== user.id || report.status !== 'in_moderazione')
+  // Allegati solo dall'autore, entro un'ora dall'invio, anche se la segnalazione è già pubblicata
+  // (pubblicazione automatica): le foto restano comunque private fino alla revisione del moderatore.
+  const [report] = await (await admin(`/rest/v1/reports?id=eq.${id}&select=id,author_id,status,created_at`)).json().catch(() => []);
+  if (!report || report.author_id !== user.id || !['in_moderazione', 'pubblicata'].includes(report.status) ||
+      Date.now() - Date.parse(report.created_at) > 3600e3)
     return reply(403, {error: 'Segnalazione non modificabile'});
 
   const existing = await (await admin(`/rest/v1/attachments?report_id=eq.${id}&select=id`)).json().catch(() => []);

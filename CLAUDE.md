@@ -12,7 +12,7 @@ Si sostiene con pubblicità non invasiva.
   - Mappe con Leaflet (dipendenza npm) + tile OpenStreetMap, ricerca indirizzi con Nominatim.
   - Design system in `design-system/` (direzione "C — Blu notte + ciano tecnico"): token in `tokens.css`, regole in `README.md` e `components.md`. Font Plus Jakarta Sans + Inter self-hosted, icone Lucide via `src/lib/icons.js` (`icon()` o `data-icon` nell'HTML), mai emoji nell'interfaccia.
   - Dati e accesso tramite `src/backend/`: `supabase.js` (predefinito, configurato in `.env`) o `local.js` (demo nel browser, `VITE_BACKEND=locale`). Nel browser restano solo le preferenze.
-  - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
+  - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio o alla prima ricerca per targa). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
 - Backend Supabase, progetto di sviluppo `SafeTaxi` (ref `emgookqbvrehcroxpypx`, Francoforte, piano Free) con schema e dati DEMO.
   - Schema in `supabase/migrations/`, seed DEMO in `supabase/seed.sql` (generato da `scripts/generate-seed.mjs`), test pgTAP in `supabase/tests/`.
   - Ogni modifica allo schema: nuova migrazione nel repo, test `npm run test:db` in locale, poi applicazione al progetto remoto.
@@ -102,7 +102,8 @@ Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/imp
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).
 - Backend: Supabase, piano Free per sviluppo e test. Per la produzione valutare il piano Pro (backup, niente pausa per inattività).
-- Moderazione: tutte le segnalazioni si pubblicano solo dopo la revisione di un moderatore.
+- Moderazione (dal 27/09/2026, sostituisce la moderazione preventiva): come le grandi piattaforme di recensioni. Le segnalazioni di account verificati che superano i controlli automatici (dati personali, insulti, etichette di reato) si pubblicano subito; ospiti e testi segnalati dai controlli vanno prima a un moderatore; foto pubbliche solo dopo revisione; dopo la pubblicazione controllo a campione e su segnalazione (DSA). Criterio: si rimuove solo ciò che è manifestamente illecito o contrario alle regole, mai un fatto perché negativo. Regola per chi scrive: fatti sì, etichette e insulti no. Analisi in `docs/legal/assessment-recensioni-e-reati.md`.
+- Conservazione: segnalazioni, targhe, licenze e account non si cancellano (sono il patrimonio del servizio); si cancellano solo i dati tecnici che non servono più al servizio e ciò che l'utente cancella con il proprio account.
 - Accesso, prima fase: email/password, Google e accesso anonimo. Apple e Facebook rinviati.
 - Allegati: volti sfocati in automatico sul dispositivo, targhe sfocate a mano in moderazione, video e audio mai pubblici (solo moderatori).
 - Canali: app iOS e Android sugli store più versione web (mobile e desktop).
@@ -110,16 +111,16 @@ Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/imp
 - Condivisione con terzi via API REST e SFTP (requisito 2): rinviata finché non c'è un destinatario concreto. Resta l'export CSV/JSON anonimizzato.
 - Flusso di lavoro: sviluppo su branch separato, una pull request per blocco; Claude fa il merge su `main` quando tutti i controlli della CI sono verdi (autorizzato da Roberto).
 - Hosting della versione web: Vercel (produzione `https://safetaxi-nu.vercel.app`), collegato al repository (deploy automatico da `main` e anteprima per ogni pull request). Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
-- Punti: assegnati alla pubblicazione della segnalazione (dopo la moderazione), non all'invio.
+- Punti: assegnati alla pubblicazione della segnalazione (anche automatica), tolti se il contenuto viene rimosso.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
 - Età minima: 18 anni (dichiarazione nel modulo di segnalazione, nota nell'accesso, termini d'uso).
-- Accuse di reato: Safe Taxi valuta il servizio, non è un servizio pubblico né un canale di denuncia; nel modulo un avviso rimanda a forze dell'ordine e 112, e le segnalazioni con accuse di reato non si pubblicano. Parere legale ancora da chiedere (decisione aperta).
+- Possibili reati nelle segnalazioni: si pubblicano se raccontati come fatti (diritto di critica: verità, pertinenza, continenza); non si pubblicano etichette ("truffatore", "ladro") e insulti. Safe Taxi non accerta fatti né reati e non è un canale di denuncia: l'avviso nel modulo rimanda a forze dell'ordine e 112.
+- Ricerca per targa o licenza (27/09/2026): mostra rating, criticità e, con almeno 5 segnalazioni verificate, le segnalazioni pubblicate di quel taxi con le repliche; targa sempre mascherata nel feed. Limite: 5 ricerche all'ora per utente (accesso anche anonimo) e 30 all'ora per indirizzo di rete (salvato solo come impronta, cancellata dopo 2 ore).
 - News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)
 - Segnalazioni che attribuiscono reati al conducente (art. 10 GDPR, art. 2-octies Codice privacy): serve un parere legale sul perimetro ammesso (vedi `docs/legal/dpia.md`, rischio R1).
 - Titolare, email di contatto privacy e punto di contatto DSA da indicare nei testi legali.
-- Limite di consultazione del rating per targa (`get_driver_rating` è pubblica): da valutare contro la raccolta massiva di targhe.
 - Notifiche push: servono un progetto Firebase (Android) e una chiave APNs con account Apple Developer (iOS).
 - Account sviluppatore per gli store: Apple Developer 99 $/anno, Google Play 25 $ una tantum.
 - CAPTCHA (Cloudflare Turnstile) per accessi anonimi e registrazioni: da aggiungere prima dell'apertura al pubblico.
@@ -130,6 +131,7 @@ Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/imp
 - Autonomia: si procede da un blocco al successivo della roadmap senza chiedere conferma. Le scelte tecniche con una soluzione ragionevole si prendono e si dichiarano nel riepilogo e nella pull request.
 - Si chiede prima di procedere solo per: costi (piani a pagamento, servizi nuovi), azioni irreversibili o su dati reali/produzione, credenziali e segreti, testi legali, pubblicazione sugli store, e le voci in "Decisioni aperte".
 - Supabase: migrazioni, funzioni, SQL, estensioni, job pianificati e impostazioni del progetto si eseguono senza chiedere autorizzazione (deciso da Roberto). Resta da chiedere solo il passaggio a piani a pagamento.
+- Temi legali (Roberto chiede a Claude di agire come il suo legale più esperto): MAI indicazioni legali non verificate. Ogni affermazione legale va verificata su fonti primarie o autorevoli (norme, sentenze, provvedimenti del Garante, linee guida ufficiali, regole pubblicate dalle piattaforme), citata con il link, e sottoposta a un assessment dei rischi e delle alternative; ciò che non si è potuto verificare va dichiarato come tale.
 - Prima di scrivere codice, raccogliere i dettagli; fare domande mirate solo quando la risposta cambia davvero il lavoro.
 - Comunicazione diretta e critica; dire chiaramente cosa non è possibile.
 - Modifiche incrementali verificate eseguendo il codice. Niente riscritture totali non richieste.

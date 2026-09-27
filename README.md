@@ -101,6 +101,10 @@ Bozze delle dichiarazioni per gli store: `docs/store/`.
 
 Scheda **Corsa → Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
 
+### Ricerca per targa o licenza
+
+Scheda **Corsa → Chi ti viene a prendere?**: con almeno 5 segnalazioni verificate mostra rating, criticità e le segnalazioni pubblicate di quel taxi (testo, importi, bollini, repliche), mai la targa in chiaro. `get_driver_rating` richiede un accesso (l'app crea quello anonimo alla prima ricerca) e limita a 5 ricerche all'ora per utente e 30 per indirizzo di rete; dell'indirizzo si salva solo un'impronta (`private.lookup_log`, cancellata dopo 2 ore).
+
 ### Corsa verificata e recensioni (Omnibus)
 
 Con un account con email confermata, **Inizia corsa** registra la corsa anche sul server (`start_ride`, `ride_ping`, `end_ride`): il server somma i km e controlla le velocità, ma conserva solo l'ultimo punto (cancellato a fine corsa), mai il percorso. La corsa vale il bollino **corsa verificata** se dura almeno 3 minuti, copre almeno 500 m con almeno 3 posizioni e nessun salto oltre 200 km/h. La segnalazione o valutazione va inviata entro 24 ore dalla fine, una sola per corsa, e se all'inizio era stata indicata la targa deve coincidere (`submit_report` / `submit_ride_rating` con `p_ride_id`). Le corse si cancellano dopo 7 giorni. La corsa simulata non vale mai il bollino.
@@ -109,8 +113,11 @@ La pagina **Come verifichiamo le recensioni** (link sotto il feed e nel modulo d
 
 ### Moderare dall'app
 
+Pubblicazione (dal 27/09/2026, come le grandi piattaforme di recensioni): ogni testo passa dai controlli automatici `private.text_flags` (stesse regole in `src/lib/textcheck.js`, che avvisa chi scrive): dati personali di terzi, etichette di reato, insulti. Account verificato e nessun segnale: pubblicata subito, con i punti. Ospiti o testi segnalati: in revisione. Allegati caricabili entro un'ora anche su segnalazioni già pubblicate; le foto restano private fino alla revisione.
+
 Con un account moderatore: **Profilo → Apri la moderazione**. La pagina mostra:
-- le segnalazioni in attesa, con nome del segnalatore, targa, licenza, posizione esatta e allegati (video e audio si riproducono lì);
+- le segnalazioni in revisione, con il motivo dei controlli automatici, nome del segnalatore, targa, licenza, importi, posizione esatta e allegati (video e audio si riproducono lì);
+- le pubblicazioni automatiche degli ultimi 7 giorni da controllare a campione: **Va bene** o **Rimuovi** con motivazione (funzione `remove_report`, toglie anche i punti);
 - per ogni foto: **Sfoca targhe** (trascina sulla foto per coprire le targhe: la versione sfocata sostituisce l'originale, dopo il controllo dei metadati sul server) e **Targhe ok, pubblica**;
 - **Pubblica** o **Rifiuta** con motivo (l'autore lo vede tra "Le tue segnalazioni");
 - le foto ancora private di segnalazioni già pubblicate;

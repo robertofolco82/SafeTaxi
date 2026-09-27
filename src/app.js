@@ -13,6 +13,7 @@ import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
+import {textFlags, FLAG_HINTS} from './lib/textcheck.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
@@ -199,7 +200,7 @@ function renderFeed(){
     '<div class="feed-item ' + (r.type === 'positiva' ? 'pos' : 'neg') + '">' +
     '<div class="row between"><b>' + esc(CITIES[r.city] ? CITIES[r.city].n : r.city) + '</b><span class="muted">' + ago(r.createdAt) + '</span></div>' +
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
-    '<div style="font-size:13px">' + esc(r.description) + '</div>' +
+    '<div style="font-size:13px">' + esc(r.description) + '</div>' + amountsLine(r.meter, r.cost) +
     '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.rideVerified ? '<span class="badge b-ok">corsa verificata</span>' : '') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') +
@@ -428,7 +429,7 @@ async function doLookup(){
   if (!n) { box.innerHTML = ''; return; }
   box.innerHTML = '<p class="muted">Verifico…</p>';
   let d;
-  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">Verifica non disponibile: ' + esc(e.message) + '</div>'; return; }
+  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">' + esc(e.message) + '</div>'; return; }
   if (!d.sufficient) {
     box.innerHTML = '<div class="note">Storico insufficiente: ' + d.verified_count + ' segnalazioni verificate (minimo ' + d.min_required + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
   }
@@ -436,7 +437,14 @@ async function doLookup(){
   box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b style="display:flex;align-items:center;gap:5px">' + icon('car-taxi-front', {size:15}) + esc(maskPlate(q)) + '</b>' + starsHtml(d.avg_rating) + '</div>' +
     '<div class="kv"><span>Rating medio</span><b>' + fmtNum(d.avg_rating, 1) + ' / 5</b></div>' +
     '<div class="kv"><span>Segnalazioni verificate</span><b>' + d.verified_count + '</b></div>' +
-    '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>';
+    '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>' +
+    (d.reports && d.reports.length ? '<h3 style="margin:12px 0 6px">Segnalazioni su questo taxi (' + d.reports.length + ')</h3>' + d.reports.map(r =>
+      '<div class="feed-item ' + (r.type === 'positiva' ? 'pos' : 'neg') + '">' +
+      '<div class="row between"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
+      '<div style="font-size:13px;margin-top:4px">' + esc(r.description) + '</div>' + amountsLine(r.meter_eur, r.cost_eur) +
+      '<div class="muted" style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : (r.city_key || '')) + ' · ' + ago(Date.parse(r.created_at)) + ' ' +
+      (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.ride_verified ? '<span class="badge b-ok">corsa verificata</span>' : '') + '</div>' +
+      (r.replies || []).map(b => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b><br>' + esc(b) + '</div>').join('') + '</div>').join('') : '');
 }
 const rateState = {driver:0, ride:0};
 function starPicker(id, onChange){
@@ -472,12 +480,17 @@ async function submitRating(){
   } catch(e) { toast(e.message); }
 }
 
-// Messaggio dopo un invio: con Supabase la segnalazione passa dalla moderazione e i punti arrivano alla pubblicazione.
+// Importi oggettivi della corsa: tassametro e pagato, affiancati.
+function amountsLine(meter, cost){
+  if (meter == null && cost == null) return '';
+  return '<div class="muted" style="margin-top:4px">' + [meter != null ? 'Tassametro ' + fmtEur(+meter) : '', cost != null ? 'Pagato ' + fmtEur(+cost) : ''].filter(Boolean).join(' · ') + '</div>';
+}
+// Messaggio dopo un invio: il database pubblica subito o manda in revisione (ospiti, testi segnalati dai controlli).
 function sentMessage(res, what){
   if (res.pending) return res.verified
-    ? what + ' inviata. Sarà pubblicata dopo la moderazione; i punti arrivano alla pubblicazione.'
-    : what + ' anonima inviata: in moderazione, non concorre ai rating.';
-  return res.verified ? what + ' inviata: +' + res.points + ' punti' : what + ' anonima inviata: visibile, ma non concorre ai rating';
+    ? what + ' inviata: contiene espressioni da verificare (etichette, insulti o dati personali), la pubblicherà un moderatore dopo la revisione.'
+    : what + ' anonima inviata: sarà pubblicata dopo la revisione di un moderatore e non concorre ai rating.';
+  return res.verified ? what + ' pubblicata: +' + res.points + ' punti' : what + ' anonima inviata: visibile, ma non concorre ai rating';
 }
 async function afterSubmit(){
   if (!isLocal()) { try { DB.myReports = await backend.myReports(); } catch(e) {} }
@@ -491,6 +504,14 @@ function initReportForm(){
  $('#reportType').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(TYPES).map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
  starPicker('reportStars', v => reportRating = v);
  ['camPhoto','camVideo','micAudio','gallery'].forEach(id => document.getElementById(id).addEventListener('change', onFiles));
+  $('#reportDesc').addEventListener('input', e => showTextHint('#descHint', e.target.value));
+  $('#rateComment').addEventListener('input', e => showTextHint('#rateHint', e.target.value));
+}
+// Avviso mentre si scrive: stesse regole dei controlli del database (src/lib/textcheck.js).
+function showTextHint(sel, text){
+  const flags = textFlags(text), box = $(sel);
+  box.innerHTML = flags.length ? icon('triangle-alert', {size:14}) + ' ' + flags.map(f => FLAG_HINTS[f]).join(' ') + ' Se lasci il testo così, la segnalazione passa prima dalla revisione di un moderatore.' : '';
+  box.classList.toggle('hidden', !flags.length);
 }
 function pick(id){ document.getElementById(id).click(); }
 // Foto: elaborate subito sul dispositivo (niente metadati, volti pixelati); l'anteprima mostra ciò che verrà inviato.
@@ -554,11 +575,11 @@ async function submitReport(e){
   try {
     const res = await backend.submitReport({rideId,name:d.name.trim(), license:d.licenza, plate:normPlate(d.targa), city:d.city,
       from:(d.from || '').trim(), to:(d.to || '').trim(), type:d.type, rating:reportRating, description:d.description.trim(),
-      cost: d.cost ? parseFloat(d.cost) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
+      cost: d.cost ? parseFloat(d.cost) : null, meter: d.meter ? parseFloat(d.meter) : null, duration: d.duration ? parseInt(d.duration, 10) : null,
       attachments:n, files:attachments.map(a => ({kind:a.kind, blob:a.file, faces:a.faces})), lat:pos.lat, lng:pos.lng});
     if (rideId) lastRide.claimed = true;
     attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
-    f.reset(); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
+    f.reset(); showTextHint('#descHint', ''); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
     await afterSubmit(); openTab('home');
     toast(sentMessage(res, 'Segnalazione') + (res.attachmentErrors && res.attachmentErrors.length ? ' Allegati non caricati: ' + res.attachmentErrors.join('; ') : ''));
   } catch(err) { toast(err.message); }
@@ -566,8 +587,8 @@ async function submitReport(e){
 }
 function updateAnonNotice(){
  $('#anonNotice').innerHTML = DB.user
-    ? icon('circle-check-big', {size:14}) + (isLocal() ? 'Segnalazione verificata: concorre ai rating e vale punti.' : 'Segnalazione verificata: dopo la moderazione concorre ai rating e vale punti.')
-    : icon('user', {size:14}) + 'Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la moderazione') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
+    ? icon('circle-check-big', {size:14}) + (isLocal() ? 'Segnalazione verificata: concorre ai rating e vale punti.' : 'Segnalazione verificata: se supera i controlli automatici è pubblicata subito, concorre ai rating e vale punti.')
+    : icon('user', {size:14}) + 'Stai segnalando come ospite: la segnalazione ' + (isLocal() ? 'sarà visibile' : 'sarà pubblicata dopo la revisione di un moderatore') + ' ma non concorre ai rating. <a href="#" onclick="event.preventDefault();openModal(\'m-login\')">Accedi</a>';
   const rid = rideIdForReport(lastRide, Date.now());
   $('#reportRide').innerHTML = rid ? icon('shield-check', {size:14}) + ' Collegata alla corsa conclusa alle ' + hhmm(lastRide.endedAt) + ': se la targa coincide con quella indicata all\'inizio della corsa, avrà il bollino "corsa verificata".' : '';
   $('#reportRide').classList.toggle('hidden', !rid);
@@ -804,7 +825,7 @@ function myReportsCard(){
     '<div class="kv"><span>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + ' · ' + ago(Date.parse(r.created_at)) +
     (r.rejection_reason ? '<br><span class="muted">Motivo: ' + esc(r.rejection_reason) + '</span>' : '') + '</span>' +
     '<span class="badge' + (r.status === 'pubblicata' ? ' b-ok' : '') + '">' + (STATUS_LABELS[r.status] || r.status) + '</span></div>').join('') +
-    '<div class="note">Ogni segnalazione è pubblicata solo dopo la revisione di un moderatore.' + (DB.user ? '' : ' Senza account le segnalazioni restano legate a questo dispositivo.') + '</div></div>';
+    '<div class="note">Le segnalazioni di account verificati che superano i controlli automatici sono pubblicate subito; le altre dopo la revisione di un moderatore.' + (DB.user ? '' : ' Senza account le segnalazioni restano legate a questo dispositivo.') + '</div></div>';
 }
 function myNoticesCard(){
   if (!DB.myNotices || !DB.myNotices.length) return '';
@@ -939,6 +960,8 @@ async function renderModeration(){
     (q.published_with_photos.length ? h('camera', 'Foto da rivedere (segnalazioni già pubblicate)', q.published_with_photos.length) +
       q.published_with_photos.map(r => '<div class="card"><b>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + '</b>' +
         '<p class="muted" style="margin-top:4px">' + esc(r.description) + '</p>' + modMedia(r.attachments) + '</div>').join('') : '') +
+    h('shield-check', 'Pubblicate in automatico (ultimi 7 giorni, controllo a campione)', q.recent_auto.length) +
+    (q.recent_auto.length ? q.recent_auto.map(modAutoCard).join('') : '<div class="card muted">Nessuna pubblicazione da controllare.</div>') +
     h('message-square', 'Repliche dei tassisti', q.replies.length) +
     (q.replies.length ? q.replies.map(modReplyCard).join('') : '<div class="card muted">Nessuna replica in attesa.</div>') +
     h('flag', 'Contenuti segnalati (Digital Services Act)', q.notices.length) +
@@ -964,7 +987,9 @@ function modReportCard(r){
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px">' + (r.kind === 'valutazione_corsa' ? icon('star', {size:13}) + 'Valutazione di fine corsa' : icon('file-text', {size:13}) + 'Segnalazione') + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.ride_verified ? ' <span class="badge b-ok">corsa verificata</span>' : '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<p style="font-size:14px;margin:6px 0">' + esc(r.description) + '</p>' +
+    (r.auto_flags && r.auto_flags.length ? '<div class="note" style="margin-top:0">' + icon('triangle-alert', {size:13}) + ' In revisione per: ' + r.auto_flags.map(f => ({etichetta_reato:'etichetta di reato', insulto:'insulto', dati_personali:'dati personali di terzi'})[f] || f).join(', ') + '. Pubblica se è un racconto di fatti; rifiuta se l\'autore non l\'ha riformulato e resta un\'offesa o un dato personale.</div>' : '') +
     kv('Segnalatore', r.reporter_name || '—') + kv('Targa', r.plate || '—') + kv('Licenza', r.license || '—') +
+    (r.meter_eur != null ? kv('Tassametro', fmtEur(+r.meter_eur)) : '') +
     (r.from_place || r.to_place ? kv('Tratta', (r.from_place || '…') + ' → ' + (r.to_place || '…')) : '') +
     (r.cost_eur != null || r.duration_min ? kv('Importo e durata', (r.cost_eur != null ? fmtEur(+r.cost_eur) : '—') + ' · ' + (r.duration_min ? r.duration_min + ' min' : '—')) : '') +
     (r.lat != null ? '<div class="kv"><span>Posizione</span><a href="' + mapsLink({lat:r.lat, lng:r.lng}) + '" target="_blank" rel="noopener">' + r.lat.toFixed(4) + ', ' + r.lng.toFixed(4) + '</a></div>' : '') +
@@ -981,6 +1006,19 @@ function modReplyCard(d){
     kv('Contatto per la verifica', d.contact) +
     '<div class="row" style="margin-top:10px"><button class="btn" onclick="modDecide(\'reply\', \'' + d.id + '\', \'pubblicata\')">' + icon('check', {size:15}) + 'Pubblica</button>' +
     '<button class="btn danger" onclick="modDecide(\'reply\', \'' + d.id + '\', \'rifiutata\')">' + icon('ban', {size:15}) + 'Rifiuta</button></div></div>';
+}
+function modAutoCard(r){
+  return '<div class="card" data-auto="' + r.id + '"><div class="row between"><b>' + (TYPES[r.type] || '') + ' · ' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : r.city_key) + '</b><span class="muted">' + ago(Date.parse(r.created_at)) + '</span></div>' +
+    '<p style="font-size:14px;margin:6px 0">' + esc(r.description) + '</p>' + amountsLine(r.meter_eur, r.cost_eur) + kv('Targa', r.plate || '—') +
+    '<label class="f" for="ar-' + r.id + '">Motivazione, solo se rimuovi (la vede l\'autore)</label><textarea id="ar-' + r.id + '" style="min-height:50px"></textarea>' +
+    '<div class="row" style="margin-top:10px"><button class="btn sec" onclick="modAuto(\'' + r.id + '\', false)">' + icon('check', {size:15}) + 'Va bene</button>' +
+    '<button class="btn danger" onclick="modAuto(\'' + r.id + '\', true)">' + icon('ban', {size:15}) + 'Rimuovi</button></div></div>';
+}
+async function modAuto(id, remove){
+  if (!remove) return runMod(() => backend.moderateReport(id, 'pubblicata'), 'Controllata.');
+  const reason = $('#ar-' + id).value.trim();
+  if (reason.length < 10) return toast('Scrivi la motivazione della rimozione (almeno 10 caratteri)');
+  await runMod(() => backend.removeReport(id, reason), 'Segnalazione rimossa.');
 }
 function modNoticeCard(n){
   return '<div class="card" data-notice="' + n.id + '"><div class="row between"><b>' + esc(NOTICE_CATEGORIES[n.category] || n.category) + '</b><span class="muted">' + ago(Date.parse(n.created_at)) + '</span></div>' +
@@ -1115,4 +1153,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

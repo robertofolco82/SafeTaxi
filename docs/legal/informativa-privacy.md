@@ -21,6 +21,7 @@ Informativa resa ai sensi degli artt. 13 e 14 del Regolamento (UE) 2016/679 ("GD
 |---|---|---|---|---|
 | Email, password (cifrata), eventuale nome da Google | Utente registrato | Account, accesso, verifica delle recensioni | Contratto (art. 6.1.b) | Fino alla cancellazione dell'account |
 | Identificativo anonimo del dispositivo (accesso anonimo) | Ospite, al primo invio | Limiti anti-abuso, collegare le segnalazioni al dispositivo | Legittimo interesse (art. 6.1.f): prevenire recensioni false | Fino alla cancellazione dell'account anonimo |
+| Impronta crittografica dell'indirizzo di rete (mai l'indirizzo) | Chi cerca una targa o una licenza | Limite di ricerche contro la raccolta massiva di targhe | Legittimo interesse (art. 6.1.f): tutela dei conducenti | 2 ore |
 | Nome e cognome del segnalatore | Autore della segnalazione | Serietà e verificabilità della segnalazione; mai pubblicato | Legittimo interesse (art. 6.1.f) | [PROPOSTA: finché la segnalazione è pubblicata; cancellato con l'account] |
 | Contenuto della segnalazione (città, tipo, voto, descrizione, tratta, importo, durata) | Autore | Pubblicazione della recensione, rating, statistiche | Contratto (art. 6.1.b) | [PROPOSTA: 3 anni, poi solo in forma aggregata] |
 | Foto, video, audio allegati | Autore | Prova a supporto, verificata dal moderatore | Contratto (art. 6.1.b) | Come la segnalazione; video e audio mai pubblici |
@@ -53,8 +54,10 @@ comunicazione alle associazioni di categoria.]
 
 ## 4. Moderazione e decisioni automatizzate
 
-Ogni segnalazione è letta da un moderatore prima della pubblicazione. Non ci sono decisioni basate
-unicamente su trattamenti automatizzati con effetti giuridici (art. 22). Sul dispositivo, un algoritmo
+Ogni testo passa da controlli automatici (ricerca di insulti, etichette di reato e dati personali di terzi):
+decidono solo se la segnalazione è pubblicata subito o dopo la revisione di un moderatore. Rifiuti e rimozioni
+sono sempre decisi da una persona e motivati: non ci sono decisioni basate unicamente su trattamenti
+automatizzati con effetti giuridici (art. 22). Sul dispositivo, un algoritmo
 (MediaPipe) individua e sfoca i volti nelle foto prima dell'invio: la foto originale non lascia il telefono.
 
 ## 5. Destinatari e fornitori

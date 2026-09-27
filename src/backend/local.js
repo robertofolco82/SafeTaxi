@@ -14,7 +14,7 @@ export function createLocalBackend(getState, save){
     async submitReport(d){
       const s = getState();
       s.reports.push({id:'r' + Date.now(), createdAt:Date.now(), city:d.city, licenza:d.license.trim(), targa:normPlate(d.plate),
-        from:d.from, to:d.to, type:d.type, rating:d.rating, description:d.description, cost:d.cost, duration:d.duration,
+        from:d.from, to:d.to, type:d.type, rating:d.rating, description:d.description, cost:d.cost, meter:d.meter ?? null, duration:d.duration,
         verified:!!s.user, attachments:d.attachments, demo:false, status:'in_moderazione', lat:d.lat, lng:d.lng});
       let points = award(POINTS.report, 'Segnalazione completa'); if (d.attachments) points += award(POINTS.attachments, 'Allegati a supporto');
       save();
