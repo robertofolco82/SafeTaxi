@@ -40,6 +40,11 @@ export function driverRatingFrom(reports, query){
   if (reps.length < MIN_DRIVER_REPORTS) return {sufficient:false, verified_count:reps.length, min_required:MIN_DRIVER_REPORTS};
   const issues = {};
   reps.filter(r => r.type !== 'positiva').forEach(r => issues[r.type] = (issues[r.type] || 0) + 1);
+  // Segnalazioni di questo taxi (come get_driver_rating nel database): le più recenti, senza targa né licenza.
+  const list = reports.filter(r => normPlate(r.targa) === q || normPlate(r.licenza) === q)
+    .sort((a, b) => b.createdAt - a.createdAt).slice(0, 20)
+    .map(r => ({id:r.id, city_key:r.city, type:r.type, rating:r.rating, description:r.description, cost_eur:r.cost ?? null,
+      meter_eur:r.meter ?? null, verified:!!r.verified, ride_verified:!!r.rideVerified, created_at:new Date(r.createdAt).toISOString(), replies:[]}));
   return {sufficient:true, verified_count:reps.length, min_required:MIN_DRIVER_REPORTS, plate_masked:maskPlate(q),
-    avg_rating:Math.round(reps.reduce((a, r) => a + r.rating, 0)/reps.length*10)/10, issues};
+    avg_rating:Math.round(reps.reduce((a, r) => a + r.rating, 0)/reps.length*10)/10, issues, reports:list};
 }

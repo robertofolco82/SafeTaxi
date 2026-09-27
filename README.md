@@ -101,6 +101,10 @@ Bozze delle dichiarazioni per gli store: `docs/store/`.
 
 Scheda **Corsa → Condividi la corsa in tempo reale** (con la corsa avviata): crea un link `?live=<token>` valido 3 ore e lo inserisce nel messaggio WhatsApp/SMS. Chi apre il link vede posizione, via e percorso, aggiornati ogni 8 secondi, senza account. Alla fine della corsa (o con "Interrompi") le posizioni vengono cancellate e il link mostra solo "Corsa conclusa". Funzioni: `start_ride_share`, `update_ride_share`, `end_ride_share`, `get_ride_share`; nel database il token è salvato solo come impronta SHA-256.
 
+### Ricerca per targa o licenza
+
+Scheda **Corsa → Chi ti viene a prendere?**: con almeno 5 segnalazioni verificate mostra rating, criticità e le segnalazioni pubblicate di quel taxi (testo, importi, bollini, repliche), mai la targa in chiaro. `get_driver_rating` richiede un accesso (l'app crea quello anonimo alla prima ricerca) e limita a 5 ricerche all'ora per utente e 30 per indirizzo di rete; dell'indirizzo si salva solo un'impronta (`private.lookup_log`, cancellata dopo 2 ore).
+
 ### Corsa verificata e recensioni (Omnibus)
 
 Con un account con email confermata, **Inizia corsa** registra la corsa anche sul server (`start_ride`, `ride_ping`, `end_ride`): il server somma i km e controlla le velocità, ma conserva solo l'ultimo punto (cancellato a fine corsa), mai il percorso. La corsa vale il bollino **corsa verificata** se dura almeno 3 minuti, copre almeno 500 m con almeno 3 posizioni e nessun salto oltre 200 km/h. La segnalazione o valutazione va inviata entro 24 ore dalla fine, una sola per corsa, e se all'inizio era stata indicata la targa deve coincidere (`submit_report` / `submit_ride_rating` con `p_ride_id`). Le corse si cancellano dopo 7 giorni. La corsa simulata non vale mai il bollino.

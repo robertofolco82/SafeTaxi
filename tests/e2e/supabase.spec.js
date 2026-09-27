@@ -71,9 +71,22 @@ test('i dati arrivano dal database: feed, Termometro e rating per targa', async 
   await page.fill('#lookupInput', 'AB123CD');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('Segnalazioni verificate7');
+  // Oltre al rating si vedono le segnalazioni di quel taxi, senza targa in chiaro.
+  await expect(page.locator('#lookupResult')).toContainText('Segnalazioni su questo taxi');
+  await expect(page.locator('#lookupResult .feed-item').first()).toBeVisible();
+  await expect(page.locator('#lookupResult')).not.toContainText('AB123CD');
   await page.fill('#lookupInput', 'ZZ999ZZ');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente: 0');
+  // Limite di 5 ricerche all'ora per utente: la sesta è bloccata.
+  for (let i = 0; i < 3; i++) {
+    await page.getByRole('button', {name: 'Verifica'}).click();
+    await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente');
+  }
+  await page.getByRole('button', {name: 'Verifica'}).click();
+  await expect(page.locator('#lookupResult')).toContainText('limite di 5 ricerche');
+  // Il blocco (HTTP 400) è voluto: il browser lo registra in console.
+  page.errors = page.errors.filter(e => !e.includes('status of 400'));
 });
 
 test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazione immediata', async ({page}) => {

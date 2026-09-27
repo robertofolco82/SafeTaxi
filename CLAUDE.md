@@ -12,7 +12,7 @@ Si sostiene con pubblicità non invasiva.
   - Mappe con Leaflet (dipendenza npm) + tile OpenStreetMap, ricerca indirizzi con Nominatim.
   - Design system in `design-system/` (direzione "C — Blu notte + ciano tecnico"): token in `tokens.css`, regole in `README.md` e `components.md`. Font Plus Jakarta Sans + Inter self-hosted, icone Lucide via `src/lib/icons.js` (`icon()` o `data-icon` nell'HTML), mai emoji nell'interfaccia.
   - Dati e accesso tramite `src/backend/`: `supabase.js` (predefinito, configurato in `.env`) o `local.js` (demo nel browser, `VITE_BACKEND=locale`). Nel browser restano solo le preferenze.
-  - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
+  - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio o alla prima ricerca per targa). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
 - Backend Supabase, progetto di sviluppo `SafeTaxi` (ref `emgookqbvrehcroxpypx`, Francoforte, piano Free) con schema e dati DEMO.
   - Schema in `supabase/migrations/`, seed DEMO in `supabase/seed.sql` (generato da `scripts/generate-seed.mjs`), test pgTAP in `supabase/tests/`.
   - Ogni modifica allo schema: nuova migrazione nel repo, test `npm run test:db` in locale, poi applicazione al progetto remoto.
@@ -112,12 +112,12 @@ Si sostiene con pubblicità non invasiva.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
 - Età minima: 18 anni (dichiarazione nel modulo di segnalazione, nota nell'accesso, termini d'uso).
 - Possibili reati nelle segnalazioni: si pubblicano se raccontati come fatti (diritto di critica: verità, pertinenza, continenza); non si pubblicano etichette ("truffatore", "ladro") e insulti. Safe Taxi non accerta fatti né reati e non è un canale di denuncia: l'avviso nel modulo rimanda a forze dell'ordine e 112.
+- Ricerca per targa o licenza (27/09/2026): mostra rating, criticità e, con almeno 5 segnalazioni verificate, le segnalazioni pubblicate di quel taxi con le repliche; targa sempre mascherata nel feed. Limite: 5 ricerche all'ora per utente (accesso anche anonimo) e 30 all'ora per indirizzo di rete (salvato solo come impronta, cancellata dopo 2 ore).
 - News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)
 - Segnalazioni che attribuiscono reati al conducente (art. 10 GDPR, art. 2-octies Codice privacy): serve un parere legale sul perimetro ammesso (vedi `docs/legal/dpia.md`, rischio R1).
 - Titolare, email di contatto privacy e punto di contatto DSA da indicare nei testi legali.
-- Limite di consultazione del rating per targa (`get_driver_rating` è pubblica): da valutare contro la raccolta massiva di targhe.
 - Notifiche push: servono un progetto Firebase (Android) e una chiave APNs con account Apple Developer (iOS).
 - Account sviluppatore per gli store: Apple Developer 99 $/anno, Google Play 25 $ una tantum.
 - CAPTCHA (Cloudflare Turnstile) per accessi anonimi e registrazioni: da aggiungere prima dell'apertura al pubblico.
