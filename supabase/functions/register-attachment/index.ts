@@ -1,5 +1,5 @@
 // Registra un allegato già caricato nel bucket "attachments", dopo averlo verificato:
-// - chi chiama è l'autore della segnalazione, ancora in moderazione;
+// - chi chiama è l'autore della segnalazione, entro un'ora dall'invio (anche se già pubblicata);
 // - formato e dimensione ammessi per il tipo dichiarato;
 // - le foto sono JPEG senza metadati (EXIF/GPS, XMP, IPTC): se ne contengono, il file viene cancellato.
 // Modalità "replace" (solo moderatori): sostituisce una foto con la versione a targhe sfocate, dopo gli stessi controlli.
