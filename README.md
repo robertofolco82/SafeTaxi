@@ -109,8 +109,11 @@ La pagina **Come verifichiamo le recensioni** (link sotto il feed e nel modulo d
 
 ### Moderare dall'app
 
+Pubblicazione (dal 27/09/2026, come le grandi piattaforme di recensioni): ogni testo passa dai controlli automatici `private.text_flags` (stesse regole in `src/lib/textcheck.js`, che avvisa chi scrive): dati personali di terzi, etichette di reato, insulti. Account verificato e nessun segnale: pubblicata subito, con i punti. Ospiti o testi segnalati: in revisione. Allegati caricabili entro un'ora anche su segnalazioni già pubblicate; le foto restano private fino alla revisione.
+
 Con un account moderatore: **Profilo → Apri la moderazione**. La pagina mostra:
-- le segnalazioni in attesa, con nome del segnalatore, targa, licenza, posizione esatta e allegati (video e audio si riproducono lì);
+- le segnalazioni in revisione, con il motivo dei controlli automatici, nome del segnalatore, targa, licenza, importi, posizione esatta e allegati (video e audio si riproducono lì);
+- le pubblicazioni automatiche degli ultimi 7 giorni da controllare a campione: **Va bene** o **Rimuovi** con motivazione (funzione `remove_report`, toglie anche i punti);
 - per ogni foto: **Sfoca targhe** (trascina sulla foto per coprire le targhe: la versione sfocata sostituisce l'originale, dopo il controllo dei metadati sul server) e **Targhe ok, pubblica**;
 - **Pubblica** o **Rifiuta** con motivo (l'autore lo vede tra "Le tue segnalazioni");
 - le foto ancora private di segnalazioni già pubblicate;

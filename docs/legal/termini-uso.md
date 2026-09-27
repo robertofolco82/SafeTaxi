@@ -25,15 +25,17 @@ parte solo dopo la tua conferma. Il funzionamento di GPS, rete e invio dei messa
 
 ## 4. Regole per le segnalazioni
 
-Puoi segnalare esperienze positive e negative. Ogni segnalazione è pubblicata solo dopo la revisione di un
-moderatore. Scrivendo una segnalazione dichiari che:
+Puoi segnalare esperienze positive e negative, anche fatti gravi. Ogni testo passa da controlli automatici:
+le segnalazioni di account con email confermata che li superano sono pubblicate subito; quelle degli ospiti e
+quelle con etichette di reato, insulti o dati personali di terzi sono pubblicate solo dopo la revisione di un
+moderatore. Le foto diventano pubbliche solo dopo la revisione. Scrivendo una segnalazione dichiari che:
 
 - riguarda una corsa che hai fatto o a cui hai assistito, ed è veritiera;
 - **non contiene dati personali di altre persone** (nomi, telefoni, indirizzi, volti riconoscibili), oltre a
   targa e licenza richieste dal modulo, che non vengono pubblicate;
-- **non contiene insulti, minacce, contenuti discriminatori o accuse di reato**: se ritieni di aver subito un
-  illecito (es. tariffa non dovuta, guida pericolosa), rivolgiti alla Polizia Locale, al Comune o alle forze
-  dell'ordine; nella segnalazione descrivi i fatti, senza qualificarli come reato;
+- **racconta i fatti** (cosa è successo, importi, orari, percorso) senza etichette come «truffatore» o «ladro»,
+  insulti, minacce o contenuti discriminatori: i fatti, anche gravi, si pubblicano; le etichette e gli insulti
+  no;
 - non è stata scritta in cambio di compensi o vantaggi, né per danneggiare un concorrente;
 - gli allegati sono tuoi o hai il diritto di usarli.
 
@@ -45,10 +47,14 @@ Come verifichiamo le recensioni: pagina "Come verifichiamo le recensioni" nell'a
 Safe Taxi è un'app di valutazione della qualità del servizio, non un servizio pubblico né un canale per
 denunciare reati. Le segnalazioni non vengono trasmesse alle autorità e non sostituiscono una denuncia o un
 esposto: chi ritiene di aver subito un reato deve rivolgersi alle forze dell'ordine o alla Polizia Locale
-(in emergenza, 112). Ciascun autore è responsabile di ciò che scrive. Le segnalazioni che contengono accuse di
-reato non vengono pubblicate o vengono rimosse. [NOTA PER IL LEGALE: questa clausola informa l'utente ma non
-esclude da sola la responsabilità del gestore per i contenuti pubblicati dopo la moderazione; la tutela effettiva
-viene dalla moderazione, vedi DPIA rischio R1.]
+(in emergenza, 112).
+
+Safe Taxi ospita le segnalazioni dei suoi utenti e non ne è autore: **non accerta la verità dei fatti né
+l'esistenza di reati**. Verifica che chi scrive sia una persona reale, dove possibile che la corsa ci sia stata
+(bollino "corsa verificata"), e che la segnalazione rispetti queste regole. Ciascun autore risponde di ciò che
+scrive. Il conducente può replicare e chiunque può segnalare un contenuto illecito. [Base: esenzione di
+responsabilità del prestatore di servizi di memorizzazione, Reg. UE 2022/2065, artt. 6 e 7; diritto di critica
+dell'autore nei limiti di verità, pertinenza e continenza. Analisi e fonti: `docs/legal/assessment-recensioni-e-reati.md`.]
 
 ## 5. Punti e premi
 
@@ -66,9 +72,11 @@ motivazione. Se rimuoviamo un tuo contenuto, ti indichiamo il motivo (art. 17).
 
 ## 7. Moderazione e sospensione
 
-Possiamo rifiutare o rimuovere contenuti che violano questi termini o la legge, e sospendere gli account che li
-violano ripetutamente o inviano segnalazioni manifestamente infondate, dopo un avvertimento (art. 23 DSA).
-Le decisioni sono prese da persone, non da sistemi automatici.
+Possiamo rifiutare o rimuovere contenuti manifestamente illeciti o che violano questi termini, e sospendere gli
+account che li violano ripetutamente o inviano segnalazioni manifestamente infondate, dopo un avvertimento
+(art. 23 DSA). Non rimuoviamo un fatto solo perché negativo o sgradito. I controlli automatici decidono solo se
+una segnalazione va online subito o dopo la revisione; rifiuti e rimozioni sono sempre decisi da una persona,
+con una motivazione che l'autore può leggere.
 
 ## 8. Dati mostrati e responsabilità
 

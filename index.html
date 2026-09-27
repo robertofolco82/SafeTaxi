@@ -127,11 +127,13 @@
         <label class="f">Valutazione complessiva <span class="req">*</span></label>
         <div class="starpick" id="reportStars"></div>
         <div class="row">
+          <div style="flex:1"><label class="f">Importo sul tassametro (€)</label><input name="meter" type="number" min="0" step="0.5" inputmode="decimal"></div>
           <div style="flex:1"><label class="f">Importo pagato (€)</label><input name="cost" type="number" min="0" step="0.5" inputmode="decimal"></div>
-          <div style="flex:1"><label class="f">Durata (min)</label><input name="duration" type="number" min="1" step="1" inputmode="numeric"></div>
         </div>
+        <label class="f">Durata (min)</label><input name="duration" type="number" min="1" step="1" inputmode="numeric" style="max-width:50%">
         <label class="f">Descrizione dell'accaduto <span class="req">*</span></label>
-        <textarea name="description" placeholder="Cosa è successo? (minimo 20 caratteri)"></textarea>
+        <textarea name="description" id="reportDesc" placeholder="Racconta i fatti: cosa è successo, importi, orari, percorso (minimo 20 caratteri)"></textarea>
+        <div id="descHint" class="note hidden" role="status"></div>
         <label class="f">Luogo dell'accaduto</label>
         <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()"><span data-icon="map-pin" data-icon-size="14"></span>Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>
         <label class="f">Allegati (max 6 file, 10 MB ciascuno)</label>
@@ -147,7 +149,7 @@
         <input type="file" id="gallery" accept="image/*,video/*,audio/*" multiple class="hidden">
         <div class="thumbs" id="thumbs"></div>
         <p class="muted" style="margin-top:6px">Le foto vengono ripulite dai metadati (compresa la posizione GPS) e i volti sono sfocati sul tuo telefono, prima dell'invio. Video e audio li vedono solo i moderatori.</p>
-        <div class="note">Safe Taxi raccoglie valutazioni sulla qualità del servizio: non è un servizio pubblico né un canale per denunciare reati. Se pensi di aver subito un reato (per esempio una truffa sulla tariffa o una guida pericolosa), rivolgiti alle forze dell'ordine o alla Polizia Locale; in caso di pericolo chiama il 112. Qui descrivi i fatti, senza accusare nessuno di un reato: le segnalazioni con accuse di reato non vengono pubblicate.</div>
+        <div class="note">Safe Taxi raccoglie valutazioni sulla qualità del servizio: non è un servizio pubblico né un canale per denunciare reati. Se pensi di aver subito un reato (per esempio una truffa sulla tariffa o una guida pericolosa), rivolgiti alle forze dell'ordine o alla Polizia Locale; in caso di pericolo chiama il 112. Qui racconta i fatti, anche gravi, così come sono successi. Etichette come «truffatore» o «ladro», insulti e dati personali di altre persone mandano la segnalazione in revisione prima della pubblicazione. Safe Taxi non accerta i fatti: ne risponde chi li scrive.</div>
         <label class="row" style="margin-top:14px;font-size:13px;align-items:flex-start">
           <input type="checkbox" name="consent" style="width:auto;margin-top:2px">
  <span>Dichiaro di avere almeno 18 anni, che i fatti sono veritieri e di aver letto l'<a href="#" onclick="openPrivacy(event)">informativa privacy</a>. <span class="req">*</span></span>
@@ -256,7 +258,8 @@
   <label class="f">Corsa (percorso, prezzo, veicolo)</label><div class="starpick" id="rateRide"></div>
   <label class="f">Qualcosa non è andato?</label><select id="rateIssue"></select>
   <label class="f">Importo pagato (€)</label><input id="rateCost" type="number" min="0" step="0.5" inputmode="decimal">
-  <label class="f">Commento</label><textarea id="rateComment" placeholder="Facoltativo"></textarea>
+  <label class="f">Commento</label><textarea id="rateComment" placeholder="Facoltativo: racconta i fatti"></textarea>
+  <div id="rateHint" class="note hidden" role="status"></div>
   <button class="btn" style="margin-top:12px" onclick="submitRating()">Invia valutazione</button>
 </div></div>
 
@@ -321,7 +324,9 @@
   <h2><span data-icon="shield-check" data-icon-size="18"></span>Come verifichiamo le recensioni <button class="x" onclick="closeModal('m-verifica')" aria-label="Chiudi"><span data-icon="x" data-icon-size="15"></span></button></h2>
   <div style="font-size:14px;line-height:1.5">
     <p style="margin-bottom:8px"><b>Chi può scrivere.</b> Chiunque, anche senza account. Nel rating dei tassisti e nel Termometro contano però solo le segnalazioni <b>verificate</b>: scritte da un account con email confermata. Quelle senza account compaiono come "anonima" e non incidono sui rating.</p>
-    <p style="margin-bottom:8px"><b>Moderazione prima della pubblicazione.</b> Ogni segnalazione e valutazione viene letta da un moderatore prima di essere pubblicata. Rifiutiamo contenuti offensivi, non pertinenti o con dati personali di terzi, con gli stessi criteri per recensioni positive e negative; il motivo del rifiuto è comunicato all'autore. Nelle foto i volti sono sfocati in automatico e le targhe dal moderatore.</p>
+    <p style="margin-bottom:8px"><b>Come si pubblica.</b> Ogni testo passa da controlli automatici che cercano insulti, etichette come «truffatore» o «ladro» e dati personali di altre persone. Le segnalazioni di account con email confermata che superano i controlli sono pubblicate subito; quelle degli ospiti e quelle segnalate dai controlli sono pubblicate solo dopo la revisione di un moderatore. Le foto diventano pubbliche solo dopo la revisione (volti e targhe sfocati).</p>
+    <p style="margin-bottom:8px"><b>Fatti sì, etichette no.</b> Si possono raccontare anche fatti gravi, come un importo superiore al tassametro o una guida pericolosa, descrivendo ciò che è successo. Safe Taxi non accerta la verità dei fatti né l'esistenza di reati: verifica che chi scrive sia una persona reale, dove possibile che la corsa ci sia stata, e che siano rispettate le regole. Ogni autore risponde di ciò che scrive.</p>
+    <p style="margin-bottom:8px"><b>Controllo dopo la pubblicazione.</b> I moderatori controllano a campione le segnalazioni pubblicate e verificano ogni contenuto segnalato con «Segnala contenuto». Rimuovono solo ciò che è illecito o contrario alle regole, con gli stessi criteri per recensioni positive e negative, mai un fatto solo perché negativo; l'autore vede il motivo.</p>
     <p style="margin-bottom:8px"><b>Bollino "corsa verificata".</b> Indica che l'autore ha registrato la corsa con l'app: almeno 3 minuti e 500 metri, con velocità plausibili, e segnalazione inviata entro 24 ore dalla fine della corsa (una sola per corsa). Se all'inizio della corsa è stata indicata la targa, deve coincidere con quella segnalata. Il bollino conferma che una corsa c'è stata, non chi era a bordo, e non esclude del tutto la falsificazione del GPS.</p>
     <p style="margin-bottom:8px"><b>Limiti contro gli abusi.</b> Al massimo 5 segnalazioni e 10 valutazioni di fine corsa ogni 24 ore per account; la stessa targa si può segnalare una volta ogni 30 giorni.</p>
     <p style="margin-bottom:8px"><b>Nessun incentivo sul giudizio.</b> I punti premiano la partecipazione, non il giudizio: segnalazioni positive e negative valgono gli stessi punti, assegnati solo dopo la pubblicazione. Non accettiamo pagamenti per pubblicare, modificare o togliere una recensione.</p>

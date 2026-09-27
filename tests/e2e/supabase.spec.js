@@ -88,7 +88,7 @@ test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazio
   await page.fill('#reportForm [name=description]', description);
   await page.check('#reportForm [name=consent]');
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
-  await expect(page.locator('#toast')).toContainText('anonima inviata: in moderazione');
+  await expect(page.locator('#toast')).toContainText('anonima inviata: sarà pubblicata dopo la revisione');
   await expect(page.locator('#feed')).not.toContainText(description);
   await page.locator('#profileBtn').click();
   await expect(page.locator('#profileBox')).toContainText('Le tue segnalazioni');
@@ -127,15 +127,36 @@ test('registrazione con conferma email, segnalazione verificata, punti alla pubb
   await page.selectOption('#reportCity', 'milano');
   await page.selectOption('#reportType', 'percorso');
   await page.locator('#reportStars span').nth(1).click();
+  // Mentre scrive, l'app avvisa se usa un'etichetta di reato; scritto come fatto, l'avviso sparisce.
+  await page.fill('#reportForm [name=description]', 'Il tassista è un truffatore, ha allungato la strada.');
+  await expect(page.locator('#descHint')).toContainText('Descrivi cosa è successo');
   await page.fill('#reportForm [name=description]', description);
+  await expect(page.locator('#descHint')).toBeHidden();
+  await page.fill('#reportForm [name=meter]', '24');
+  await page.fill('#reportForm [name=cost]', '38');
   await page.check('#reportForm [name=consent]');
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
-  await expect(page.locator('#toast')).toContainText('Sarà pubblicata dopo la moderazione');
-
-  // Il moderatore pubblica dal pannello: la segnalazione compare nel feed e arrivano 50 punti.
-  await moderate(description, 'pubblicata');
+  // Account verificato e testo corretto: pubblicata subito, con i 50 punti.
+  await expect(page.locator('#toast')).toContainText('Segnalazione pubblicata: +50 punti');
   await page.reload();
   await expect(page.locator('#feed')).toContainText(description.slice(0, 30));
+  await expect(page.locator('.feed-item', {hasText: description.slice(0, 30)})).toContainText('Tassametro € 24,00 · Pagato € 38,00');
+
+  // Con un'etichetta di reato la segnalazione non va online subito: passa dalla revisione.
+  const flagged = `Verificato ${Date.now()}: è un ladro, mi ha chiesto il doppio del tassametro.`;
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
+  await page.fill('#reportForm [name=name]', 'Giulia Verdi');
+  await page.fill('#reportForm [name=licenza]', '4321');
+  await page.fill('#reportForm [name=targa]', 'KZ' + String(Date.now()).slice(-3) + 'YY');
+  await page.selectOption('#reportCity', 'milano');
+  await page.selectOption('#reportType', 'tariffa');
+  await page.locator('#reportStars span').nth(0).click();
+  await page.fill('#reportForm [name=description]', flagged);
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('la pubblicherà un moderatore dopo la revisione');
+  const [held] = await rest(`reports?description=eq.${encodeURIComponent(flagged)}&select=status,auto_flags`);
+  expect(held).toEqual({status: 'in_moderazione', auto_flags: ['etichetta_reato']});
   await page.locator('#profileBtn').click();
   await expect(page.locator('#profileBox')).toContainText('Pubblicata');
   await expect(page.locator('#profileBox .thermo .val')).toHaveText('50');
@@ -183,7 +204,7 @@ test('allegati: foto ripulita e audio caricati, verificati dal server; la foto a
   await page.fill('#reportForm [name=description]', description);
   await page.check('#reportForm [name=consent]');
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
-  await expect(page.locator('#toast')).toContainText('anonima inviata: in moderazione');
+  await expect(page.locator('#toast')).toContainText('anonima inviata: sarà pubblicata dopo la revisione');
   await expect(page.locator('#toast')).not.toContainText('Allegati non caricati');
 
   const [report] = await rest(`reports?description=eq.${encodeURIComponent(description)}&select=id`);
@@ -249,7 +270,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
   await page.fill('#reportForm [name=description]', description);
   await page.check('#reportForm [name=consent]');
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
-  await expect(page.locator('#toast')).toContainText('in moderazione');
+  await expect(page.locator('#toast')).toContainText('dopo la revisione di un moderatore');
   const [report] = await rest(`reports?description=eq.${encodeURIComponent(description)}&select=id`);
   const [photoBefore] = await rest(`attachments?report_id=eq.${report.id}&select=id,storage_path`);
 
@@ -384,7 +405,8 @@ test('cancellazione dell\'account dal sito: dati personali e contenuti non pubbl
   const submit = async (d, plate) => (await sb.rpc('submit_report', {p_city: 'roma', p_type: 'altro', p_rating: 2, p_description: d,
     p_reporter_name: 'Utente Da Cancellare', p_plate: plate, p_license: '77'})).data;
   const published = await submit(`Pubblicata ${stamp}: resta anonima dopo la cancellazione.`, 'CA' + String(stamp).slice(-3) + 'NC');
-  const pending = await submit(`In attesa ${stamp}: sparisce con l'account.`, 'CB' + String(stamp).slice(-3) + 'NC');
+  // Un'etichetta di reato la tiene in revisione (non pubblicata): deve sparire con l'account.
+  const pending = await submit(`In attesa ${stamp}: è un ladro, sparisce con l'account.`, 'CB' + String(stamp).slice(-3) + 'NC');
   const audioPath = `${pending}/${crypto.randomUUID()}.wav`;
   expect((await sb.storage.from('attachments').upload(audioPath, wav(), {contentType: 'audio/wav'})).error).toBeNull();
   expect((await sb.functions.invoke('register-attachment', {body: {report_id: pending, path: audioPath, kind: 'audio'}})).error).toBeNull();
@@ -452,7 +474,7 @@ test('corsa verificata: la corsa registrata dal GPS dà il bollino alla valutazi
   const comment = `Corsa verificata ${stamp}: autista puntuale e percorso corretto.`;
   await page.fill('#rateComment', comment);
   await page.getByRole('button', {name: 'Invia valutazione'}).click();
-  await expect(page.locator('#toast')).toContainText('Valutazione inviata');
+  await expect(page.locator('#toast')).toContainText('Valutazione pubblicata');
 
   const [report] = await rest(`reports?description=eq.${encodeURIComponent(comment)}&select=id,ride_verified`);
   expect(report.ride_verified).toBe(true);
