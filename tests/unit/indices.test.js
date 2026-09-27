@@ -33,8 +33,14 @@ describe('regole di pubblicazione', () => {
 
 describe('stima del costo', () => {
   const roma = {lat:41.9028, lng:12.4964}, termini = {lat:41.9009, lng:12.5010};
-  it('usa la tariffa di riferimento con meno di 5 corse nello storico', () => {
-    expect(estimateTrip(roma, termini, []).basis).toMatch(/tariffa di riferimento/);
+  it('usa la tariffa comunale verificata con meno di 5 corse nello storico', () => {
+    const e = estimateTrip(roma, termini, []);
+    expect(e.basis).toMatch(/tariffa comunale di Roma/);
+    expect(e.lo).toBeCloseTo((3.5 + 1.33*e.km)*0.85);
+  });
+  it('dichiara demo la tariffa delle città non ancora verificate', () => {
+    const bari = {lat:41.1171, lng:16.8719}, stazione = {lat:41.1177, lng:16.8697};
+    expect(estimateTrip(bari, stazione, []).basis).toMatch(/parametri demo/);
   });
   it('usa lo storico della città con almeno 5 corse', () => {
     const hist = Array.from({length:5}, () => ({city:'roma', cost:20, duration:20}));

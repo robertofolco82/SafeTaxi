@@ -2,7 +2,7 @@
 // Solo per gli ambienti di sviluppo: mai in produzione.
 import {writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
-import {CITIES, COOPS} from '../src/lib/config.js';
+import {CITIES, COOPS, LIC_SRC} from '../src/lib/config.js';
 import {seedReports} from '../src/lib/seed.js';
 import {maskPlate} from '../src/lib/utils.js';
 
@@ -11,21 +11,24 @@ const uuid = i => '00000000-0000-4000-8000-' + String(i).padStart(12, '0');
 
 export const SEED_PATH = fileURLToPath(new URL('../supabase/seed.sql', import.meta.url));
 
+const citySource = c => 'Licenze: ' + LIC_SRC + '. Tariffa: ' + (c.tv ? c.tSrc : 'DEMO, da verificare') + '. Domanda giornaliera: DEMO.';
+
 export function buildSeedSql(){
   // createdAt relativo: generato con now = 0, in SQL diventa now() meno l'età della segnalazione.
   const reports = seedReports(0);
 
   const out = [
     '-- DATI DEMO generati da scripts/generate-seed.mjs: NON modificare a mano, NON caricare in produzione.',
-    '-- Città, cooperative e segnalazioni sono inventate o da verificare: tutte marcate is_demo.',
+    '-- Segnalazioni, domanda stimata e rating delle cooperative sono inventati: righe marcate is_demo.',
+    '-- Licenze (ART 2024), numeri delle cooperative (phone_verified) e tariffe indicate in source sono verificati.',
     '',
     'insert into public.cities (key, name, lat, lng, licenses, daily_demand, tariff_start, tariff_km, is_demo, source) values',
     Object.entries(CITIES).map(([k, c]) =>
-      `  (${[k, c.n, c.lat, c.lng, c.lic, c.dem, c.t.start, c.t.km].map(q).join(', ')}, true, 'DEMO: licenze, domanda e tariffe da verificare con i Comuni')`).join(',\n') + ';',
+      `  (${[k, c.n, c.lat, c.lng, c.lic, c.dem, c.t.start, c.t.km].map(q).join(', ')}, true, ${q(citySource(c))})`).join(',\n') + ';',
     '',
     'insert into public.coops (city_key, name, phone, features, phone_verified, is_demo) values',
     Object.entries(COOPS).flatMap(([k, list]) => list.map(c =>
-      `  (${q(k)}, ${q(c.n)}, ${q(c.tel)}, array[${c.f.map(q).join(', ')}]::text[], false, true)`)).join(',\n') + ';',
+      `  (${q(k)}, ${q(c.n)}, ${q(c.tel)}, array[${c.f.map(q).join(', ')}]::text[], ${c.v === true}, true)`)).join(',\n') + ';',
     '',
     'insert into public.reports (id, kind, city_key, type, rating, description, from_place, to_place, cost_eur, duration_min, lat, lng, plate_masked, verified, status, is_demo, created_at) values',
     reports.map((r, i) =>

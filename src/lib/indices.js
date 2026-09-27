@@ -22,7 +22,11 @@ export function estimateTrip(o, d, reports){
   const pm = perMinOf(hist);
   let cost, basis;
   if (key && hist.length >= 5 && pm) { cost = pm*min; basis = 'storico di ' + hist.length + ' corse a ' + CITIES[key].n; }
-  else { const t = key ? CITIES[key].t : {start:3.5, km:1.3}; cost = t.start + t.km*km; basis = 'tariffa di riferimento (parametri demo)'; }
+  else {
+    const c = key ? CITIES[key] : null, t = c ? c.t : {start:3.5, km:1.3};
+    cost = t.start + t.km*km;
+    basis = c && c.tv ? 'tariffa comunale di ' + c.n + ' (partenza e km, senza attese né supplementi)' : 'tariffa di riferimento (parametri demo)';
+  }
   return {km, min, lo:cost*0.85, hi:cost*1.15, basis};
 }
 // Bollo RECOMMENDED: rating >= 4,0 e almeno 20 recensioni

@@ -2,7 +2,7 @@
    Le regole di calcolo pure stanno in ./lib e sono coperte dai test.
    I dati arrivano dal backend (./backend): Supabase, oppure demo locale se non configurato. */
 import L from 'leaflet';
-import {CITIES, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS, OCCUPANCY} from './lib/config.js';
+import {CITIES, LIC_SRC, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS, OCCUPANCY} from './lib/config.js';
 import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, starCount} from './lib/utils.js';
 import {seedReports} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
@@ -130,7 +130,9 @@ function makeMap(id, center, zoom){
   const el = document.getElementById(id);
   if (!hasL()) { el.innerHTML = '<div class="nomap">Mappa non disponibile: serve connessione per caricare OpenStreetMap.</div>'; return null; }
   const m = L.map(el).setView(center, zoom);
- L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(m);
+  // Prefisso senza la bandiera che Leaflet aggiunge di default dalla 1.8: l'app resta neutrale sui simboli politici.
+  m.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+ L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>'}).addTo(m);
   return m;
 }
 
@@ -661,7 +663,7 @@ function renderNational(){
     '<div class="stat"><b>' + (pm ? fmtEur(pm) : '—') + '</b><span>Costo medio/min</span></div></div>' +
     '<h3 style="margin-top:14px">Classifica città</h3>' +
     ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + CITIES[x.k].n + '</span><b style="display:flex;align-items:center;gap:5px;color:' + mood(x.v).c + '">' + icon(MOOD_ICON[mood(x.v).k], {size:14}) + x.v + '/100 <span class="muted">(' + x.n + ')</span></b></div>').join('') +
-    '<div class="muted" style="margin-top:6px">Licenze nelle città monitorate: ' + fmtNum(lic) + ' <span class="badge b-demo">demo</span></div>';
+    '<div class="muted" style="margin-top:6px">Licenze nelle città monitorate: ' + fmtNum(lic) + ' (fonte: ' + LIC_SRC + ')</div>';
 }
 function renderCityStats(k){
   const c = CITIES[k], reps = byCity(k), v = indexOf(reps), m = mood(v), pm = perMinOf(reps);
@@ -673,12 +675,14 @@ function renderCityStats(k){
  $('#cityStats').innerHTML =
     '<div class="row between"><h3>' + icon('landmark', {size:15}) + c.n + '</h3><span class="badge" style="background:' + m.c + ';color:#fff">' + icon(MOOD_ICON[m.k], {size:12}) + (v == null ? 'n.d.' : v) + '/100</span></div>' +
     '<div class="kv"><span>Segnalazioni (verificate)</span><b>' + reps.length + ' (' + reps.filter(r => r.verified).length + ')</b></div>' +
-    '<div class="kv"><span>Licenze taxi</span><b>' + fmtNum(c.lic) + ' <span class="badge b-demo">demo</span></b></div>' +
+    '<div class="kv"><span>Licenze taxi <span class="muted">(' + LIC_SRC + ')</span></span><b>' + fmtNum(c.lic) + '</b></div>' +
     '<div class="kv"><span>Richieste giornaliere stimate</span><b>' + fmtNum(c.dem) + ' <span class="badge b-demo">demo</span></b></div>' +
     '<div class="kv"><span>Richieste per licenza al giorno</span><b style="color:' + rc + '">' + fmtNum(ratio, 1) + '</b></div>' +
     '<div class="kv"><span>Costo medio al minuto</span><b>' + (pm ? fmtEur(pm) : '—') + '</b></div>' +
+    '<div class="kv"><span>Tariffa comunale (partenza feriale, al km)</span><b>' + fmtEur(c.t.start) + ' + ' + fmtEur(c.t.km) + '/km' + (c.tv ? '' : ' <span class="badge b-demo">da verificare</span>') + '</b></div>' +
+    (c.tv ? '<div class="muted" style="font-size:12px">Fonte: ' + esc(c.tSrc) + '</div>' : '') +
     '<div class="kv"><span>Ricavo lordo orario stimato</span><b>' + (gross ? fmtEur(gross) : '—') + '</b></div>' +
-    '<div class="kv"><span>Reddito medio dichiarato</span><b class="muted">da integrare (fonte MEF)</b></div>' +
+    '<div class="kv"><span>Reddito medio dichiarato</span><b class="muted">non pubblicato per città</b></div>' +
     '<h3 style="margin-top:12px">Problemi segnalati</h3>' +
     (probs.length ? probs.map(p => { const pc = Math.round(cnt[p]/neg.length*100); return '<div class="pbar"><span class="t">' + TYPES[p] + '</span><span class="p"><i style="width:' + pc + '%"></i></span><b>' + pc + '%</b></div>'; }).join('') : '<p class="muted">Nessuna criticità segnalata.</p>') +
     '<div class="note">Ricavo lordo orario = costo medio al minuto × 60 × occupazione ipotizzata (' + Math.round(OCCUPANCY*100) + '%). Il confronto con i redditi dichiarati si fa solo su dati aggregati ufficiali e con metodologia pubblica, mai sul singolo tassista.</div>';
@@ -703,6 +707,7 @@ function coopCard(x, priority){
   return '<div class="card" style="' + (rec ? 'border:1.5px solid var(--pri)' : '') + '">' +
     '<div class="row between"><b>' + esc(x.n) + (priority ? ' <span class="badge b-ok">Priorità</span>' : '') + '</b>' + (rec ? '<span class="badge rec">' + icon('trophy', {size:12}) + 'RECOMMENDED</span>' : '') + '</div>' +
     '<div style="margin:6px 0;font-size:13px;display:flex;align-items:center;gap:4px">' + st + '</div>' + ext +
+    (x.v === false ? '<div style="margin:6px 0"><span class="badge b-demo">Numero da verificare</span></div>' : '') +
     '<div class="chips" style="margin:6px 0">' + (x.f || []).map(f => '<span class="badge">' + (FILTER_ICONS[f] ? icon(FILTER_ICONS[f], {size:11}) : '') + (FILTERS[f] || f) + '</span>').join('') + '</div>' +
     (x.d ? '<div class="muted" style="margin-bottom:8px">' + esc(x.d) + '</div>' : '') + action + '</div>';
 }
@@ -714,7 +719,7 @@ function renderBook(){
   html += '<h3 style="margin:14px 2px 8px">' + icon('building-2', {size:15}) + 'Cooperative a ' + CITIES[k].n + '</h3>';
   html += coops.length ? coops.map(x => coopCard(x, false)).join('') : '<div class="card muted">' + (all.length ? 'Nessuna cooperativa corrisponde al filtro.' : 'Cooperative di questa città non ancora censite.') + '</div>';
   html += '<div class="card"><h3>' + icon('trophy', {size:16}) + 'Cosa significa RECOMMENDED</h3><div style="font-size:13px;line-height:1.5">Il bollo è assegnato automaticamente a chi ha, sulle esperienze degli utenti Safe Taxi verificati: valutazione media pari o superiore a 4,0 su 5; almeno 20 recensioni negli ultimi 12 mesi. Il calcolo è aggiornato ogni mese. Il bollo non è acquistabile e si perde se i requisiti non sono più rispettati. La voce "Priorità" indica il posizionamento in elenco: se deriva da un accordo commerciale, viene indicata come "Sponsorizzato".</div></div>';
-  html += '<div class="muted" style="padding:0 4px 10px">Valutazioni demo. Numeri di telefono da verificare con le cooperative prima della pubblicazione.</div>';
+  html += '<div class="muted" style="padding:0 4px 10px">Valutazioni Safe Taxi demo. Numeri e servizi verificati sui siti ufficiali delle cooperative il 27/09/2026, salvo quelli marcati "da verificare".</div>';
  $('#bookList').innerHTML = html;
 }
 async function callNumber(tel, name){ if (await confirmDialog('Chiamare ' + name + '?', 'Verrà avviata una chiamata al numero ' + fmtTel(tel) + ' fuori dall’app.', 'Chiama')) location.href = 'tel:' + tel; }
