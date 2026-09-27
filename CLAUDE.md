@@ -71,8 +71,9 @@ Si sostiene con pubblicità non invasiva.
 - Interfaccia e testi in italiano.
 
 ## Da verificare prima del rilascio
-- Numeri di telefono delle cooperative (Roma, Milano, Torino, Bologna, Firenze) e censimento delle altre città.
-- Licenze per città (Comuni), tariffe (delibere comunali), redditi medi dichiarati (MEF).
+- Dati verificati il 27/09/2026 (fonti in `docs/fonti-dati.md`): numeri delle cooperative di 11 città, link agli store, licenze (ART 2024), tariffe di Roma, Milano, Napoli, Torino, Firenze e Bologna.
+- Ancora da verificare: tariffe di Venezia, Genova, Palermo, Bari e Catania (tariffari da leggere a mano); numeri di La Capitale (Roma) e Nuova Co.Ta.Ba. (Bari); domanda giornaliera stimata (nessuna fonte ufficiale).
+- Redditi medi dichiarati: il MEF non li pubblica per città (open data per codice attività solo sopra 100.000 euro; ISA DG72U mescola taxi e NCC ed esclude i forfettari). Il confronto resta nascosto finché non c'è una fonte ufficiale aggregata.
 - Termini di Google sull'uso dei feed RSS di Google News in un'app con pubblicità (se non compatibili: passare ai feed diretti delle testate).
 - Fornitore delle mappe per la produzione: le tile pubbliche di OSM non sono pensate per uso intensivo. Rispettare i limiti d'uso di Nominatim.
 
@@ -94,7 +95,7 @@ Si sostiene con pubblicità non invasiva.
 5. Compliance: valutazione d'impatto privacy (DPIA), informativa, termini d'uso, procedura di segnalazione e rimozione prevista dal Digital Services Act, consenso per cookie e pubblicità.
    - ✅ 5a. Segnalazione di contenuti (DSA artt. 16–17): "Segnala contenuto" su segnalazioni e repliche, decisione motivata del moderatore, esito nel profilo, punti tolti ai contenuti rimossi.
    - 5b. Bozze in `docs/legal/` (informativa, termini, DPIA, cookie e pubblicità, DSA): da validare con un legale e completare (titolare, email di contatto) prima di pubblicarle nell'app.
-   - Da fare dopo la validazione: testi nell'app, conservazione delle segnalazioni (proposta 3 anni) e cancellazione di quelle rifiutate, sospensione degli account che abusano (art. 23 DSA).
+   - Da fare dopo la validazione: testi nell'app, sospensione degli account che abusano (art. 23 DSA). Conservazione: vedi "Decisioni prese".
 
 ## Decisioni prese
 - Titolare: iniziativa personale di Roberto Folco (nessun legame con Telepass).

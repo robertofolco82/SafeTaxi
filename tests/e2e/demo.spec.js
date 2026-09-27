@@ -32,6 +32,21 @@ test('home: Termometro, feed con targhe mascherate e mappa', async ({page}) => {
   expect(feed).not.toMatch(/\b[A-Z]{2}\d{3}[A-Z]{2}\b/);
 });
 
+test('mappa: attribuzione OpenStreetMap senza bandiera nel prefisso', async ({page}) => {
+  const attr = page.locator('#homeMap .leaflet-control-attribution');
+  await expect(attr).toContainText('OpenStreetMap contributors');
+  await expect(attr.locator('.leaflet-attribution-flag')).toHaveCount(0);
+});
+
+test('prenota: numeri verificati e avviso su quelli da verificare', async ({page}) => {
+  await page.locator('nav.tabs').getByRole('button', {name: 'Prenota'}).click();
+  await page.selectOption('#bookCity', 'napoli');
+  await expect(page.locator('#bookList')).toContainText('Consortaxi 2222');
+  await expect(page.locator('#bookList')).not.toContainText('Numero da verificare');
+  await page.selectOption('#bookCity', 'bari');
+  await expect(page.locator('#bookList')).toContainText('Numero da verificare');
+});
+
 test('stima del costo verso una destinazione', async ({page}) => {
   await page.fill('#destInput', 'Stazione Termini');
   await page.press('#destInput', 'Enter');
