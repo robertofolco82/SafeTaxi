@@ -429,7 +429,7 @@ async function doLookup(){
   if (!n) { box.innerHTML = ''; return; }
   box.innerHTML = '<p class="muted">Verifico…</p>';
   let d;
-  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">Verifica non disponibile: ' + esc(e.message) + '</div>'; return; }
+  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">' + esc(e.message) + '</div>'; return; }
   if (!d.sufficient) {
     box.innerHTML = '<div class="note">Storico insufficiente: ' + d.verified_count + ' segnalazioni verificate (minimo ' + d.min_required + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
   }
@@ -437,7 +437,14 @@ async function doLookup(){
   box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b style="display:flex;align-items:center;gap:5px">' + icon('car-taxi-front', {size:15}) + esc(maskPlate(q)) + '</b>' + starsHtml(d.avg_rating) + '</div>' +
     '<div class="kv"><span>Rating medio</span><b>' + fmtNum(d.avg_rating, 1) + ' / 5</b></div>' +
     '<div class="kv"><span>Segnalazioni verificate</span><b>' + d.verified_count + '</b></div>' +
-    '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>';
+    '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>' +
+    (d.reports && d.reports.length ? '<h3 style="margin:12px 0 6px">Segnalazioni su questo taxi (' + d.reports.length + ')</h3>' + d.reports.map(r =>
+      '<div class="feed-item ' + (r.type === 'positiva' ? 'pos' : 'neg') + '">' +
+      '<div class="row between"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
+      '<div style="font-size:13px;margin-top:4px">' + esc(r.description) + '</div>' + amountsLine(r.meter_eur, r.cost_eur) +
+      '<div class="muted" style="margin-top:4px;display:flex;gap:4px;flex-wrap:wrap;align-items:center">' + esc(CITIES[r.city_key] ? CITIES[r.city_key].n : (r.city_key || '')) + ' · ' + ago(Date.parse(r.created_at)) + ' ' +
+      (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.ride_verified ? '<span class="badge b-ok">corsa verificata</span>' : '') + '</div>' +
+      (r.replies || []).map(b => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b><br>' + esc(b) + '</div>').join('') + '</div>').join('') : '');
 }
 const rateState = {driver:0, ride:0};
 function starPicker(id, onChange){

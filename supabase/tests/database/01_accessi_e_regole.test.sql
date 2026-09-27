@@ -137,14 +137,16 @@ insert into public.reports (id, city_key, type, rating, description, verified, s
   from generate_series(1, 4) i;
 insert into private.reports_private (report_id, plate, license)
   select ('66666666-6666-4666-8666-' || lpad(i::text, 12, '0'))::uuid, 'ZZ999ZZ', '4242' from generate_series(1, 4) i;
-set local role anon;
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 select is((public.get_driver_rating('zz 999 zz') ->> 'sufficient')::boolean, false, 'con 4 segnalazioni il rating non si mostra');
 reset role;
 insert into public.reports (id, city_key, type, rating, description, verified, status, is_demo)
   values ('66666666-6666-4666-8666-000000000005', 'citta_test', 'positiva', 5, 'Test', true, 'pubblicata', true);
 insert into private.reports_private (report_id, plate, license) values ('66666666-6666-4666-8666-000000000005', 'ZZ999ZZ', '4242');
-set local role anon;
-select is(public.get_driver_rating('4242') - 'issues',
+set local role authenticated;
+select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
+select is(public.get_driver_rating('4242') - 'issues' - 'reports',
   '{"sufficient": true, "verified_count": 5, "min_required": 5, "plate_masked": "42•••42", "avg_rating": 4.2}'::jsonb,
   'con 5 segnalazioni verificate il rating si mostra (ricerca per licenza)');
 select is(public.get_driver_rating('ZZ999ZZ') -> 'issues', '{"tariffa": 1}'::jsonb, 'criticità conteggiate per tipo');
