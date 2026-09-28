@@ -31,6 +31,10 @@ test('home: Termometro, feed con targhe mascherate e mappa', async ({page}) => {
   await page.locator('#thermo').getByRole('button', {name: 'Seleziona città'}).click();
   await expect(page.locator('#tab-mappa')).toHaveClass(/active/);
   await expect(page.locator('#citySearch')).toBeFocused();
+  // IMP-05b: andamento negli ultimi 12 mesi, con i dati anche in tabella.
+  await page.locator('nav.tabs').getByRole('button', {name: /Home/}).click();
+  await expect(page.locator('#trendItalia svg.trend')).toHaveAttribute('aria-label', /^Andamento del Termometro Italia: ultimo valore \d+ su 100/);
+  await expect(page.locator('#trendItalia tbody tr')).toHaveCount(12);
   await expect(page.locator('#homeMap .leaflet-container, #homeMap.leaflet-container')).toHaveCount(1);
   const feed = await page.locator('#feed').innerText();
   expect(feed).toContain('•••');
@@ -194,6 +198,7 @@ test('mappa Italia e prenotazione', async ({page}) => {
   await page.locator('#citySearch').dispatchEvent('change');
   await expect(page.locator('#cityStats')).toContainText('Milano');
   await expect(page.locator('#cityStats svg.gauge')).toHaveAttribute('aria-label', /Termometro/);
+  await expect(page.locator('#trendCity svg.trend, #trendCity p')).toHaveCount(1);
   await expect(page.locator('#nationalStats .gauge-mini svg.gauge').first()).toHaveAttribute('aria-label', /^Termometro \d+ su 100: /);
   await page.getByRole('button', {name: /Prenota/}).last().click();
   await expect(page.locator('#bookList')).toContainText('Uber');
