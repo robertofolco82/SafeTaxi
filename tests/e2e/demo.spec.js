@@ -26,6 +26,11 @@ test.afterEach(async ({page}) => {
 test('home: Termometro, feed con targhe mascherate e mappa', async ({page}) => {
   await expect(page.locator('#thermo')).toContainText('Termometro Safe Taxi');
   await expect(page.locator('#thermo')).toContainText('DATI DEMO');
+  // IMP-05a: tachimetro con valore e giudizio anche in testo; "Seleziona città" porta alla ricerca nella Mappa.
+  await expect(page.locator('#thermo svg.gauge')).toHaveAttribute('aria-label', /^Termometro \d+ su 100: /);
+  await page.locator('#thermo').getByRole('button', {name: 'Seleziona città'}).click();
+  await expect(page.locator('#tab-mappa')).toHaveClass(/active/);
+  await expect(page.locator('#citySearch')).toBeFocused();
   await expect(page.locator('#homeMap .leaflet-container, #homeMap.leaflet-container')).toHaveCount(1);
   const feed = await page.locator('#feed').innerText();
   expect(feed).toContain('•••');
@@ -135,6 +140,8 @@ test('mappa Italia e prenotazione', async ({page}) => {
   await page.fill('#citySearch', 'Milano');
   await page.locator('#citySearch').dispatchEvent('change');
   await expect(page.locator('#cityStats')).toContainText('Milano');
+  await expect(page.locator('#cityStats svg.gauge')).toHaveAttribute('aria-label', /Termometro/);
+  await expect(page.locator('#nationalStats .gauge-mini svg.gauge').first()).toHaveAttribute('aria-label', /^Termometro \d+ su 100: /);
   await page.getByRole('button', {name: /Prenota/}).last().click();
   await expect(page.locator('#bookList')).toContainText('Uber');
   await expect(page.locator('#bookList')).toContainText('Cosa significa RECOMMENDED');
