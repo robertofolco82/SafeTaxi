@@ -5,7 +5,7 @@ import L from 'leaflet';
 import {CITIES, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS} from './lib/config.js';
 import {figure, sourceLine} from './lib/official.js';
 import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, starCount} from './lib/utils.js';
-import {seedReports} from './lib/seed.js';
+import {seedReports, seedWaits} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
 import {icon} from './lib/icons.js';
 import {toOpenDataRows, toCsv} from './lib/opendata.js';
@@ -18,7 +18,9 @@ import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/t
 import {gaugeSvg} from './lib/gauge.js';
 import {trendSvg} from './lib/trend.js';
 import {FEED_PAGE} from './lib/feed.js';
-import {recentWaits, waitLevel, WAIT_WINDOW_HOURS} from './lib/waits.js';
+import {recentWaits, waitLevel, WAIT_WINDOW_HOURS, slotLabel, MIN_WAIT_SAMPLE, HISTORY_MONTHS} from './lib/waits.js';
+import {waitProfileSvg} from './lib/waitchart.js';
+import {dayType, holidayName, romeParts, DAY_TYPES} from './lib/holidays.js';
 import {addRecent, saveFavorite, renameFavorite, removeFavorite, sortFavorites, parsePlaces, FAVORITE_LABELS} from './lib/places.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
@@ -55,7 +57,7 @@ function loadDB(){
   try { const raw = localStorage.getItem(isLocal() ? DB_KEY : PREFS_KEY); if (raw) DB = JSON.parse(raw); } catch(e) { memOnly = true; }
   const base = {reports:[], user:null, points:0, ledger:[], myReports:[], contacts:[], powerSave:false, privacyOk:false};
   if (!isLocal()) { DB = Object.assign(base, DB || {}, {reports:[], user:null, points:0, ledger:[], myReports:[]}); return; }
-  if (!DB || !Array.isArray(DB.reports)) { DB = Object.assign(base, {reports: seedReports()}); saveDB(); }
+  if (!DB || !Array.isArray(DB.reports)) { DB = Object.assign(base, {reports: [...seedReports(), ...seedWaits()]}); saveDB(); }
   DB.myReports = [];
 }
 function saveDB(){
@@ -789,7 +791,58 @@ function setMapMode(m){
   mapMode = m; $$('[data-mapmode]').forEach(b => b.classList.toggle('on', b.dataset.mapmode === m));
   $('#legendMood').classList.toggle('hidden', m !== 'insoddisfazione'); $('#legendWait').classList.toggle('hidden', m !== 'attese');
   $('#mapTitle').textContent = m === 'attese' ? 'Mappa delle attese' : 'Mappa dell\'insoddisfazione';
+  $('#waitHistory').classList.toggle('hidden', m !== 'attese');
   buildWaitLayer(); toggleLayersByZoom();
+  if (m === 'attese') openWaitHistory();
+}
+// IMP-07 (parte 2): storico per data e ora e previsione per tipo di giorno. I conteggi e le medie arrivano dal backend.
+let whPlaces = [], whSeq = 0;
+function openWaitHistory(){
+  const sel = $('#whCity');
+  if (!sel.options.length) {
+    sel.innerHTML = Object.entries(CITIES).map(([k, c]) => '<option value="' + k + '">' + esc(c.n) + '</option>').join('');
+    $('#whDate').value = romeParts(Date.now()).date;
+    whCityChanged();
+  }
+}
+async function whCityChanged(){
+  const city = $('#whCity').value, seq = ++whSeq;
+  $('#whPlace').innerHTML = '<option value="">Tutta la città</option>';
+  try { whPlaces = await backend.waitPlaces(city); } catch(e) { whPlaces = []; }
+  if (seq !== whSeq) return;
+  $('#whPlace').innerHTML = '<option value="">Tutta la città</option>' + whPlaces.map((p, i) =>
+    '<option value="' + i + '">' + esc(p.place || 'Punto senza nome') + ' (' + p.n + ' segnalazioni)</option>').join('');
+  if (whPlaces.length) $('#whPlace').value = '0';
+  renderWaitHistory();
+}
+const longDate = iso => new Date(iso + 'T12:00:00Z').toLocaleDateString('it-IT', {weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'UTC'});
+async function renderWaitHistory(){
+  const out = $('#whOut'), city = $('#whCity').value, p = whPlaces[+$('#whPlace').value], seq = ++whSeq;
+  const date = /^\d{4}-\d{2}-\d{2}$/.test($('#whDate').value) ? $('#whDate').value : romeParts(Date.now()).date;
+  const type = dayType(date), hol = holidayName(date), q = {city, lat:p ? p.lat : null, lng:p ? p.lng : null};
+  out.innerHTML = '<p class="muted" style="font-size:13px">Caricamento…</p>';
+  let profile, same;
+  try { [profile, same] = await Promise.all([backend.waitProfile({...q, type}), backend.waitSameDate({...q, date})]); }
+  catch(e) { if (seq === whSeq) out.innerHTML = '<p class="muted" style="font-size:13px">Storico non disponibile.</p>'; return; }
+  if (seq !== whSeq) return;
+  $('#whDemo').classList.toggle('hidden', !profile.some(x => x.demo) && !same.some(x => x.demo));
+  const shown = profile.filter(x => x.avg != null);
+  const worst = shown.length ? shown.reduce((a, b) => b.avg > a.avg ? b : a) : null, best = shown.length ? shown.reduce((a, b) => b.avg < a.avg ? b : a) : null;
+  const where = p ? esc(p.place || 'Punto senza nome') : 'tutta la città';
+  out.innerHTML = '<h4 style="margin:10px 0 2px">' + esc(longDate(date)) + '</h4>' +
+    '<div class="muted" style="font-size:13px">' + DAY_TYPES[type] + (hol ? ' (' + esc(hol) + ')' : '') + ' · ' + where + '</div>' +
+    (worst ? '<div class="kv" style="margin-top:6px"><span>Fascia più lunga (tipica)</span><b>' + slotLabel(worst.slot) + ' · ' + worst.avg + ' min · ' + waitLevel(worst.avg).l + '</b></div>' +
+      '<div class="kv"><span>Fascia più breve (tipica)</span><b>' + slotLabel(best.slot) + ' · ' + best.avg + ' min</b></div>' : '') +
+    '<h4 style="margin:12px 0 0">Attesa tipica: ' + DAY_TYPES[type].toLowerCase() + ', ultimi ' + HISTORY_MONTHS + ' mesi</h4>' +
+    '<div class="muted" style="font-size:12px">Media in minuti per fascia oraria; trattino = meno di ' + MIN_WAIT_SAMPLE + ' segnalazioni.</div>' +
+    '<div style="margin-top:6px">' + waitProfileSvg(profile, {title:'Attesa tipica ' + DAY_TYPES[type].toLowerCase()}) + '</div>' +
+    '<h4 style="margin:12px 0 4px">Il ' + esc(longDate(date).replace(/^\S+ /, '').replace(/ \d{4}$/, '')) + ' negli ultimi anni</h4>' +
+    (same.length ? same.map(y => '<div class="kv"><span>' + y.year + ' <span class="muted">· ' + y.n + ' segnalazioni</span></span><b>' +
+      (y.avg == null ? 'dati insufficienti' : 'media ' + y.avg + ' min · max ' + y.max + ' min') + '</b></div>').join('')
+      : '<p class="muted" style="font-size:13px">Nessuna segnalazione in questa data negli anni precedenti.</p>') +
+    '<p class="note" style="margin-top:8px">Stima dallo storico degli ultimi ' + HISTORY_MONTHS + ' mesi: solo segnalazioni di attesa di account verificati, ' +
+    'ora italiana, fasce di 2 ore con almeno ' + MIN_WAIT_SAMPLE + ' segnalazioni. È una media del passato, non una garanzia. ' +
+    'Festivi: domenica e festività nazionali (dal 2026 anche il 4 ottobre); i santi patroni locali non sono considerati.</p>';
 }
 const cssColor = v => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\(|\)$/g, '')).trim() || '#dc2626';
 function buildWaitLayer(){
@@ -1382,4 +1435,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {setMapMode, setWaitMode, searchWaitPlace, pickWaitPlace, setFeedCity, searchFeed, loadFeed, toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {setMapMode, whCityChanged, renderWaitHistory, setWaitMode, searchWaitPlace, pickWaitPlace, setFeedCity, searchFeed, loadFeed, toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

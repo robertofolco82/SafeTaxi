@@ -9,6 +9,8 @@ describe('supabase/seed.sql', () => {
   it('marca come DEMO tutte le città, cooperative e segnalazioni', () => {
     const sql = buildSeedSql();
     expect(sql).not.toMatch(/, false, 'DEMO/);
-    expect(sql.match(/'pubblicata', true,/g)).toHaveLength(150);
+    expect(sql.match(/'pubblicata', true, now\(\)/g)).toHaveLength(150);
+    // Attese DEMO per lo storico (IMP-07): generate in SQL, anch'esse con is_demo = true.
+    expect(sql).toContain("lat, lng, w, place, ts, true, 'pubblicata', true, ts from waits;");
   });
 });

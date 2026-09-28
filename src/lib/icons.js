@@ -60,6 +60,7 @@ import sprayCan from 'lucide-static/icons/spray-can.svg?raw';
 import micOff from 'lucide-static/icons/mic-off.svg?raw';
 import paperclip from 'lucide-static/icons/paperclip.svg?raw';
 import hourglass from 'lucide-static/icons/hourglass.svg?raw';
+import calendarClock from 'lucide-static/icons/calendar-clock.svg?raw';
 import check from 'lucide-static/icons/check.svg?raw';
 import mail from 'lucide-static/icons/mail.svg?raw';
 import radio from 'lucide-static/icons/radio.svg?raw';
@@ -81,7 +82,7 @@ const ICONS = {
   'message-square': messageSquare, smartphone, clock, 'plane-takeoff': planeTakeoff,
   'circle-check-big': circleCheckBig, banknote, ban, route, 'octagon-alert': octagonAlert,
   'triangle-alert': triangleAlert, 'spray-can': sprayCan, 'mic-off': micOff, paperclip,
-  hourglass, check, mail, radio, 'undo-2': undoTwo, 'trash-2': trashTwo, 'refresh-cw': refreshCw,
+  hourglass, 'calendar-clock': calendarClock, check, mail, radio, 'undo-2': undoTwo, 'trash-2': trashTwo, 'refresh-cw': refreshCw,
   eye, flag, navigation, history, briefcase, bookmark,
 };
 

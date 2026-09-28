@@ -199,6 +199,24 @@ test('segnalazione di attesa/coda senza targa e heatmap delle attese (IMP-07)', 
   await expect(page.locator('#legendWait')).toBeVisible();
 });
 
+test('storico e previsioni delle attese: festivi, fasce orarie e stessa data (IMP-07)', async ({page}) => {
+  const year = new Date().getFullYear() - 1;
+  await page.locator('nav.tabs').getByRole('button', {name: /Mappa/}).click();
+  await page.getByRole('button', {name: 'Attese (ultime 2 ore)'}).click();
+  await expect(page.locator('#waitHistory')).toBeVisible();
+  await expect(page.locator('#whPlace')).toContainText('Stazione Termini, uscita via Marsala');
+  await page.fill('#whDate', `${year}-12-25`);
+  await page.locator('#whDate').dispatchEvent('change');
+  await expect(page.locator('#whOut')).toContainText(`25 dicembre ${year}`);
+  await expect(page.locator('#whOut')).toContainText('Domenica o festivo (Natale)');
+  await expect(page.locator('#whOut')).toContainText('Fascia più lunga');
+  await expect(page.locator('#whOut svg[role=img]')).toHaveAttribute('aria-label', /fasce su 12/);
+  await expect(page.locator('#whOut')).toContainText(`${year - 1} · 8 segnalazioni`);
+  await expect(page.locator('#whDemo')).toBeVisible();
+  await page.selectOption('#whCity', 'bari');
+  await expect(page.locator('#whOut')).toContainText('Dati insufficienti');
+});
+
 test('SOS: il 112 non parte mai senza conferma', async ({page}) => {
   const navigations = [];
   page.on('framenavigated', f => navigations.push(f.url()));

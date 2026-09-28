@@ -122,6 +122,22 @@ export function createSupabaseBackend(url, key){
       if (error) fail(error);
       return data.map(r => ({month:r.month, idx:r.idx, n:Number(r.month_count)}));
     },
+    // Storico delle attese (IMP-07, parte 2): punti, profilo per fascia oraria e stessa data negli anni precedenti.
+    async waitPlaces(city){
+      const {data, error} = await sb.rpc('get_wait_places', {p_city:city});
+      if (error) fail(error);
+      return data.map(r => ({lat:Number(r.lat), lng:Number(r.lng), place:r.place_name || '', n:r.n}));
+    },
+    async waitProfile({city, lat = null, lng = null, type}){
+      const {data, error} = await sb.rpc('get_wait_profile', {p_city:city, p_day_type:type, p_lat:lat, p_lng:lng});
+      if (error) fail(error);
+      return data.map(r => ({slot:r.slot, n:r.n, avg:r.avg_min, demo:r.is_demo}));
+    },
+    async waitSameDate({city, lat = null, lng = null, date}){
+      const {data, error} = await sb.rpc('get_wait_same_date', {p_city:city, p_date:date, p_lat:lat, p_lng:lng});
+      if (error) fail(error);
+      return data.map(r => ({year:r.year, n:r.n, avg:r.avg_min, max:r.max_min, demo:r.is_demo}));
+    },
     // Feed filtrato sul server (IMP-03): città, tipo e parola chiave, a pagine (before = data dell'ultima mostrata).
     async feed({city = '', q = '', kind = 'all', before = null, limit = 12} = {}){
       const {data, error} = await sb.rpc('feed_reports', {p_city:city || null, p_query:q || null, p_kind:kind,

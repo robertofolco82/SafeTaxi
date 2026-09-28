@@ -24,7 +24,7 @@ Si sostiene con pubblicità non invasiva.
 ## Requisiti funzionali
 1. Segnalazione
    - Obbligatori: nome e cognome del segnalatore, licenza, targa, città, descrizione.
-   - Segnalazione di attesa/coda (IMP-07, deciso da Roberto il 28/09/2026): senza targa né licenza, con minuti di attesa, luogo (obbligatorio) e orario; conta solo per il rating della città e compare sulla mappa delle attese (ultime 2 ore).
+   - Segnalazione di attesa/coda (IMP-07, deciso da Roberto il 28/09/2026): senza targa né licenza, con minuti di attesa, luogo (obbligatorio) e orario; conta solo per il rating della città e compare sulla mappa delle attese (ultime 2 ore). Storico e previsioni nella stessa mappa: attesa tipica per fascia di 2 ore nel tipo di giorno (lavorativo, sabato, domenica/festivo, calendario in `src/lib/holidays.js`) e stessa data negli anni precedenti.
    - Facoltativi: tratta, importo, durata, posizione GPS.
    - Allegati foto, video e audio, da fotocamera o galleria.
 2. Segnalazioni salvate nel database e condivisibili con terzi via API REST e SFTP, solo come dati anonimizzati o aggregati.
