@@ -11,7 +11,7 @@ Si sostiene con pubblicità non invasiva.
   - Le funzioni richiamate da `onclick`/`onchange`/`onsubmit` sono esposte su `window` in fondo a `src/app.js`: se ne aggiungi una, registrala lì.
   - Mappe con Leaflet (dipendenza npm) + tile OpenStreetMap, ricerca indirizzi con Nominatim.
   - Design system in `design-system/` (direzione "C — Blu notte + ciano tecnico"): token in `tokens.css`, regole in `README.md` e `components.md`. Font Plus Jakarta Sans + Inter self-hosted, icone Lucide via `src/lib/icons.js` (`icon()` o `data-icon` nell'HTML), mai emoji nell'interfaccia.
-  - Dati e accesso tramite `src/backend/`: `supabase.js` (predefinito, configurato in `.env`) o `local.js` (demo nel browser, `VITE_BACKEND=locale`). Nel browser restano solo le preferenze.
+  - Dati e accesso tramite `src/backend/`: `supabase.js` (predefinito, configurato in `.env`) o `local.js` (demo nel browser, `VITE_BACKEND=locale`). Nel browser restano solo le preferenze; preferiti, recenti e contatti di emergenza restano solo sul dispositivo (`src/native/storage.js`: archivio nativo nell'app, browser sul web), mai sul server.
   - Accesso: email/password con conferma, Google, anonimo (creato solo al primo invio o alla prima ricerca per targa). Impostazioni dei pannelli in `docs/configurazione-accesso.md`.
 - Backend Supabase, progetto di sviluppo `SafeTaxi` (ref `emgookqbvrehcroxpypx`, Francoforte, piano Free) con schema e dati DEMO.
   - Schema in `supabase/migrations/`, seed DEMO in `supabase/seed.sql` (generato da `scripts/generate-seed.mjs`), test pgTAP in `supabase/tests/`.

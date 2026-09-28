@@ -37,6 +37,42 @@ test('home: Termometro, feed con targhe mascherate e mappa', async ({page}) => {
   expect(feed).not.toMatch(/\b[A-Z]{2}\d{3}[A-Z]{2}\b/);
 });
 
+test('partenza modificabile, preferiti e recenti solo sul dispositivo (IMP-04)', async ({page}) => {
+  const outgoing = [];
+  page.on('request', r => { if (!/127\.0\.0\.1|localhost/.test(r.url())) outgoing.push(r.url()); });
+  // Destinazione: finisce nei recenti; si salva come Casa.
+  await page.fill('#destInput', 'Stazione Termini');
+  await page.press('#destInput', 'Enter');
+  await page.locator('#destResults button').first().click();
+  await expect(page.locator('#estimateBox')).toContainText('Costo stimato');
+  await expect(page.locator('#placesBox')).toContainText('Recenti');
+  await page.fill('#favLabel', 'Casa');
+  await page.getByRole('button', {name: 'Salva'}).click();
+  await expect(page.locator('#placesBox').getByRole('button', {name: 'Casa'})).toBeVisible();
+  // Partenza diversa dalla posizione attuale, scelta dai preferiti.
+  await page.getByRole('button', {name: 'Cambia'}).click();
+  await page.locator('#placesBox').getByRole('button', {name: 'Casa'}).click();
+  await expect(page.locator('#startLabel')).toHaveText('Stazione Termini');
+  await expect(page.locator('#estimateBox')).toContainText('Partenza: Stazione Termini');
+  await page.getByRole('button', {name: 'Usa posizione attuale'}).click();
+  await expect(page.locator('#startLabel')).toHaveText('Posizione attuale');
+  // Restano dopo il riavvio, salvati solo sul dispositivo.
+  await page.reload();
+  await expect(page.locator('#placesBox').getByRole('button', {name: 'Casa'})).toBeVisible();
+  expect(outgoing.filter(u => !/nominatim|tile\.openstreetmap/.test(u))).toEqual([]);
+  // Profilo: rinomina ed elimina; cronologia cancellabile.
+  await page.locator('#profileBtn').click();
+  await page.fill('[data-fav]', 'Stazione');
+  await page.getByRole('button', {name: 'Rinomina'}).click();
+  await expect(page.locator('#profileBox')).toContainText('Destinazioni recenti');
+  await page.locator('#profileBox').getByRole('button', {name: 'Cancella cronologia'}).click();
+  await page.locator('#cYes').click();
+  await page.getByRole('button', {name: 'Elimina Stazione'}).click();
+  await expect(page.locator('#profileBox')).toContainText('Nessun preferito');
+  await page.locator('nav.tabs').getByRole('button', {name: /Home/}).click();
+  await expect(page.locator('#placesBox')).toBeEmpty();
+});
+
 test('mappa: attribuzione OpenStreetMap senza bandiera nel prefisso', async ({page}) => {
   const attr = page.locator('#homeMap .leaflet-control-attribution');
   await expect(attr).toContainText('OpenStreetMap contributors');

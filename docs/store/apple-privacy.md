@@ -23,6 +23,8 @@
 
 Salute, finanze, contatti della rubrica, cronologia di navigazione e ricerca, dati d'uso, diagnostica, identificativo pubblicitario.
 
+Restano solo sul dispositivo e non vanno dichiarati come raccolti (non lasciano il telefono): contatti di emergenza, indirizzi preferiti, ultime 10 destinazioni e punto di partenza scelto. Si cancellano con "Elimina account" (preferiti e recenti) o disinstallando l'app. [DA VERIFICARE nella revisione: le ricerche di indirizzi inviate a OpenStreetMap Nominatim, servizio di terzi.]
+
 ## Altri requisiti Apple
 
 - **Cancellazione dell'account nell'app** (linea guida 5.1.1(v)): Profilo → Elimina account e dati.

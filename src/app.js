@@ -15,8 +15,10 @@ import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
 import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/textcheck.js';
 import {gaugeSvg} from './lib/gauge.js';
+import {addRecent, saveFavorite, renameFavorite, removeFavorite, sortFavorites, parsePlaces, FAVORITE_LABELS} from './lib/places.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
+import {deviceGet, deviceSet, deviceRemove} from './native/storage.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
 
 /* ================= UTILITY ================= */
@@ -56,9 +58,23 @@ function saveDB(){
   if (memOnly) return;
   try {
     if (isLocal()) localStorage.setItem(DB_KEY, JSON.stringify(DB));
-    else localStorage.setItem(PREFS_KEY, JSON.stringify({contacts:DB.contacts, powerSave:DB.powerSave, privacyOk:DB.privacyOk}));
+    else localStorage.setItem(PREFS_KEY, JSON.stringify({powerSave:DB.powerSave, privacyOk:DB.privacyOk}));
   } catch(e) { memOnly = true; }
 }
+// Dati solo sul dispositivo (IMP-04): preferiti, recenti e contatti di emergenza, mai inviati al server.
+// Nell'app nativa stanno nell'archivio del sistema operativo (src/native/storage.js), sul web nel browser.
+const PLACES_KEY = 'safetaxi.places', CONTACTS_KEY = 'safetaxi.contacts';
+let places = {favorites:[], recents:[]};
+async function loadDeviceData(){
+  places = parsePlaces(await deviceGet(PLACES_KEY));
+  let contacts = null;
+  try { contacts = JSON.parse(await deviceGet(CONTACTS_KEY)); } catch(e) {}
+  if (Array.isArray(contacts)) DB.contacts = contacts.filter(c => c && c.name && c.phone);
+  else if (DB.contacts.length) await saveContacts();  // contatti salvati dalle versioni precedenti nelle preferenze del browser
+}
+const savePlaces = () => deviceSet(PLACES_KEY, JSON.stringify(places));
+const saveContacts = () => deviceSet(CONTACTS_KEY, JSON.stringify(DB.contacts));
+async function clearPlaces(){ places = {favorites:[], recents:[]}; await deviceRemove(PLACES_KEY); }
 // Ricarica dal backend segnalazioni, utente, punti e segnalazioni personali.
 async function reloadData(){
   try {
@@ -227,42 +243,100 @@ function initHome(){
  $('#estimateBox').innerHTML = '<div class="note">Posizione non disponibile: consenti l’accesso alla posizione per stimare il costo dal punto in cui ti trovi.</div>';
   });
 }
-let destResults = [];
-async function searchDestination(e){
-  e.preventDefault();
-  const q = $('#destInput').value.trim();
-  if (q.length < 3) return toast('Scrivi almeno 3 caratteri');
- $('#destResults').innerHTML = '<p class="muted">Cerco…</p>';
+// Ricerca indirizzi: solo con il pulsante "Cerca", mai mentre si scrive (regole d'uso di Nominatim).
+let destResults = [], startResults = [], startPlace = null, currentDest = null;
+async function searchAddress(q, box, onPick){
+  if (q.length < 3) { toast('Scrivi almeno 3 caratteri'); return []; }
+  box.innerHTML = '<p class="muted">Cerco…</p>';
   try {
     let url = 'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&countrycodes=it&accept-language=it&q=' + encodeURIComponent(q);
     if (lastPos) { const d = 0.4; url += '&viewbox=' + (lastPos.lng-d) + ',' + (lastPos.lat+d) + ',' + (lastPos.lng+d) + ',' + (lastPos.lat-d); }
-    const r = await fetch(url); destResults = await r.json();
-    if (!destResults.length) { $('#destResults').innerHTML = '<p class="muted">Nessun risultato.</p>'; return; }
- $('#destResults').innerHTML = destResults.map((x, i) => {
+    const r = await fetch(url), list = await r.json();
+    if (!list.length) { box.innerHTML = '<p class="muted">Nessun risultato.</p>'; return []; }
+    box.innerHTML = list.map((x, i) => {
       const parts = x.display_name.split(',');
-      return '<button class="opt" style="padding:8px" onclick="pickDest(' + i + ')"><div><b style="font-size:13px">' + esc(parts.slice(0,2).join(',')) + '</b><span>' + esc(parts.slice(2,5).join(',')) + '</span></div></button>';
+      return '<button class="opt" style="padding:8px" onclick="' + onPick + '(' + i + ')"><div><b style="font-size:13px">' + esc(parts.slice(0,2).join(',')) + '</b><span>' + esc(parts.slice(2,5).join(',')) + '</span></div></button>';
     }).join('');
-  } catch(err) { $('#destResults').innerHTML = '<p class="muted">Ricerca non disponibile (serve connessione).</p>'; }
+    return list.map(x => ({name:x.display_name.split(',')[0], lat:+x.lat, lng:+x.lon}));
+  } catch(err) { box.innerHTML = '<p class="muted">Ricerca non disponibile (serve connessione).</p>'; return []; }
 }
-function pickDest(i){
-  const x = destResults[i]; if (!x) return;
-  const dest = {lat:+x.lat, lng:+x.lon}, name = x.display_name.split(',')[0];
+async function searchDestination(e){
+  e.preventDefault();
+  destResults = await searchAddress($('#destInput').value.trim(), $('#destResults'), 'pickDest');
+}
+async function searchStart(e){
+  e.preventDefault();
+  startResults = await searchAddress($('#startInput').value.trim(), $('#startResults'), 'pickStart');
+}
+// Partenza: "Posizione attuale" (GPS) se non si sceglie altro.
+function toggleStartSearch(){
+  if (startPlace) return setStart(null);
+  const open = $('#startPanel').classList.toggle('hidden') === false;
+  $('#startToggle').textContent = open ? 'Chiudi' : 'Cambia';
+  if (open) { renderPlaces(); $('#startInput').focus(); }
+}
+function setStart(p){
+  startPlace = p;
+  $('#startLabel').textContent = p ? p.name : 'Posizione attuale';
+  $('#startToggle').textContent = p ? 'Usa posizione attuale' : 'Cambia';
+  $('#startPanel').classList.add('hidden'); $('#startResults').innerHTML = ''; $('#startInput').value = '';
+  renderPlaces();
+  if (currentDest) showEstimate(currentDest);
+}
+function pickStart(i){ const x = startResults[i]; if (x) setStart(x); }
+function pickDest(i){ const x = destResults[i]; if (x) chooseDest(x); }
+// Preferiti e recenti: con il pannello "Partenza" aperto il tocco imposta la partenza, altrimenti la destinazione.
+function pickPlace(kind, i){
+  const list = kind === 'fav' ? sortFavorites(places.favorites) : places.recents, x = list[i]; if (!x) return;
+  if (!$('#startPanel').classList.contains('hidden')) setStart({name:x.name, lat:x.lat, lng:x.lng});
+  else chooseDest({name:x.name, lat:x.lat, lng:x.lng});
+}
+function renderPlaces(){
+  const box = $('#placesBox'); if (!box) return;
+  const favs = sortFavorites(places.favorites), forStart = !$('#startPanel').classList.contains('hidden');
+  const favIcon = l => l.toLowerCase() === 'casa' ? 'house' : l.toLowerCase() === 'lavoro' ? 'briefcase' : 'bookmark';
+  box.innerHTML = (favs.length || places.recents.length) ? '<div class="muted" style="font-size:12px;margin-top:8px">' + (forStart ? 'Tocca per usarlo come partenza' : 'Tocca per usarlo come destinazione') + '</div>' +
+    (favs.length ? '<div class="chips" style="margin-top:6px" aria-label="Preferiti">' + favs.map((f, i) => '<button class="chip" onclick="pickPlace(\'fav\',' + i + ')">' + icon(favIcon(f.label), {size:13}) + esc(f.label) + '</button>').join('') + '</div>' : '') +
+    (places.recents.length ? '<div style="margin-top:8px"><div class="row between"><b style="font-size:13px;display:flex;align-items:center;gap:4px">' + icon('history', {size:13}) + 'Recenti</b><button class="btn sec sm" onclick="clearRecents()">Cancella cronologia</button></div>' +
+      places.recents.map((r, i) => '<button class="opt" style="padding:6px 8px" onclick="pickPlace(\'rec\',' + i + ')"><div><b style="font-size:13px">' + esc(r.name) + '</b></div></button>').join('') + '</div>' : '') : '';
+}
+async function clearRecents(){
+  if (!(await confirmDialog('Cancellare la cronologia?', 'Le ultime destinazioni salvate su questo dispositivo verranno cancellate.', 'Cancella'))) return;
+  places.recents = []; await savePlaces(); renderPlaces(); toast('Cronologia cancellata');
+}
+async function saveCurrentFavorite(){
+  if (!currentDest) return;
+  try { places.favorites = saveFavorite(places.favorites, $('#favLabel').value, currentDest); }
+  catch(e) { return toast(e.message); }
+  await savePlaces(); renderPlaces(); toast('Salvato nei preferiti');
+}
+function chooseDest(dest){
+  currentDest = dest;
+  places.recents = addRecent(places.recents, dest); savePlaces(); renderPlaces();
+  showEstimate(dest);
+}
+function showEstimate(dest){
+  const name = dest.name, origin = startPlace || lastPos;
  $('#destResults').innerHTML = '';
   if (homeMap) {
     if (destMarker) homeMap.removeLayer(destMarker);
     if (destLine) homeMap.removeLayer(destLine);
     destMarker = L.circleMarker([dest.lat, dest.lng], {radius:9, color:'#fff', weight:3, fillColor:'#facc15', fillOpacity:1}).addTo(homeMap).bindPopup(esc(name));
-    if (lastPos) { destLine = L.polyline([[lastPos.lat, lastPos.lng], [dest.lat, dest.lng]], {dashArray:'6 6', color:'#0f766e'}).addTo(homeMap); homeMap.fitBounds(destLine.getBounds(), {padding:[30,30]}); }
+    if (origin) { destLine = L.polyline([[origin.lat, origin.lng], [dest.lat, dest.lng]], {dashArray:'6 6', color:'#0f766e'}).addTo(homeMap); homeMap.fitBounds(destLine.getBounds(), {padding:[30,30]}); }
     else homeMap.setView([dest.lat, dest.lng], 14);
   }
-  if (!lastPos) { $('#estimateBox').innerHTML = '<div class="note">Attiva la posizione per stimare il costo dal punto in cui ti trovi.</div>'; return; }
-  const e = estimateTrip(lastPos, dest, DB.reports);
+  const favForm = '<div class="row" style="margin-top:8px"><input id="favLabel" list="favLabels" placeholder="Salva come: Casa, Lavoro o un nome" aria-label="Nome del preferito">' +
+    '<datalist id="favLabels">' + FAVORITE_LABELS.map(l => '<option value="' + l + '">').join('') + '</datalist>' +
+    '<button class="btn sec sm" onclick="saveCurrentFavorite()">' + icon('star', {size:13}) + 'Salva</button></div>';
+  if (!origin) { $('#estimateBox').innerHTML = '<div class="note">Attiva la posizione o scegli una partenza per stimare il costo.' + favForm + '</div>'; return; }
+  const e = estimateTrip(origin, dest, DB.reports);
  $('#estimateBox').innerHTML = '<div class="note" style="font-size:13px"><b>' + esc(name) + '</b>' +
     '<div class="kv"><span>Distanza stimata</span><b>' + fmtNum(e.km, 1) + ' km</b></div>' +
     '<div class="kv"><span>Tempo stimato</span><b>' + Math.round(e.min) + ' min</b></div>' +
     '<div class="kv"><span>Costo stimato</span><b>' + fmtEur(e.lo) + ' – ' + fmtEur(e.hi) + '</b></div>' +
     '<div class="muted">Base: ' + esc(e.basis) + '. Distanza in linea d’aria × 1,3: stima indicativa, non vincolante.</div>' +
-    '<button class="btn sm" style="margin-top:8px" onclick="openTab(\'prenota\')">' + icon('phone', {size:14}) + 'Prenota un taxi</button></div>';
+    (startPlace ? '<div class="muted">Partenza: ' + esc(startPlace.name) + '</div>' : '') +
+    '<button class="btn sm" style="margin-top:8px" onclick="openTab(\'prenota\')">' + icon('phone', {size:14}) + 'Prenota un taxi</button>' + favForm + '</div>';
 }
 
 /* ================= CORSA ================= */
@@ -812,6 +886,7 @@ function renderProfile(){
     '<div class="note">Stessi punti per segnalazioni positive e negative: +50 segnalazione completa, +20 con allegati, +10 valutazione di fine corsa. Si premia la partecipazione, non il giudizio espresso.</div>' +
     REWARDS.map((r, i) => '<div class="kv"><span>' + esc(r.n) + '</span><button class="btn sm' + (DB.points >= r.c ? '' : ' sec') + '" onclick="redeem(' + i + ')">' + fmtNum(r.c) + ' pt</button></div>').join('') +
     (DB.ledger.length ? '<h3 style="margin-top:12px">Movimenti</h3>' + DB.ledger.slice(0, 8).map(l => '<div class="kv"><span>' + esc(l.why) + '</span><b style="color:' + (l.n > 0 ? '#16a34a' : '#dc2626') + '">' + (l.n > 0 ? '+' : '') + l.n + '</b></div>').join('') : '') + '</div>' +
+    placesCard() +
     '<div class="card"><h3>' + icon('life-buoy', {size:16}) + 'Contatti di emergenza</h3>' +
  (DB.contacts.length ? DB.contacts.map((c, i) => '<div class="kv"><span>' + esc(c.name) + ' · ' + esc(c.phone) + '</span><button class="btn sec sm" onclick="removeContact(' + i + ')" aria-label="Rimuovi contatto">' + icon('x', {size:13}) + '</button></div>').join('') : '<p class="muted">Nessun contatto salvato.</p>') +
     '<div class="row" style="margin-top:8px"><input id="cName" placeholder="Nome"><input id="cPhone" placeholder="Telefono" inputmode="tel"></div>' +
@@ -829,13 +904,13 @@ function deleteCard(){
   const has = backend && backend.hasSession();
   return '<div class="card" id="deleteCard"><h3>' + icon('trash-2', {size:16}) + 'Elimina account e dati</h3>' +
     '<p class="muted">Cancelliamo subito: profilo e accesso, punti, condivisioni della corsa, segnalazioni e repliche non ancora pubblicate (con foto, video e audio). ' +
-    'Le segnalazioni già pubblicate restano come contributo anonimo: il tuo nome viene cancellato. L\'operazione non si può annullare.</p>' +
+    'Le segnalazioni già pubblicate restano come contributo anonimo: il tuo nome viene cancellato. Su questo dispositivo cancelliamo anche preferiti e recenti. L\'operazione non si può annullare.</p>' +
     (has ? '<button class="btn danger" style="margin-top:10px" onclick="deleteAccount()">Elimina account e dati</button>'
          : '<p class="muted" style="margin-top:8px">Per cancellare il tuo account accedi con lo stesso metodo che usi di solito.</p><button class="btn sec" style="margin-top:8px" onclick="openModal(\'m-login\')">Accedi</button>') + '</div>';
 }
 async function deleteAccount(){
   if (!(await confirmDialog('Eliminare account e dati?', 'Profilo, punti e contenuti non pubblicati verranno cancellati subito. Non si può annullare.', 'Elimina definitivamente'))) return;
-  try { await backend.deleteAccount(); await reloadData(); renderProfile(); toast('Account e dati cancellati.'); }
+  try { await backend.deleteAccount(); await clearPlaces(); renderPlaces(); await reloadData(); renderProfile(); toast('Account e dati cancellati.'); }
   catch(e) { toast(e.message); }
 }
 function myReportsCard(){
@@ -856,9 +931,27 @@ function myNoticesCard(){
 function addContact(){
   const n = $('#cName').value.trim(), p = $('#cPhone').value.trim();
   if (!n || p.replace(/\D/g, '').length < 6) return toast('Inserisci nome e numero');
- DB.contacts.push({name:n, phone:p}); saveDB(); renderProfile();
+ DB.contacts.push({name:n, phone:p}); saveContacts(); renderProfile();
 }
-function removeContact(i){ DB.contacts.splice(i, 1); saveDB(); renderProfile(); }
+function removeContact(i){ DB.contacts.splice(i, 1); saveContacts(); renderProfile(); }
+// Gestione dei preferiti nel profilo: rinomina ed elimina.
+async function renameFav(id){
+  const el = document.querySelector('[data-fav="' + id + '"]'); if (!el) return;
+  try { places.favorites = renameFavorite(places.favorites, id, el.value); } catch(e) { return toast(e.message); }
+  await savePlaces(); renderPlaces(); renderProfile(); toast('Preferito rinominato');
+}
+async function deleteFav(id){
+  places.favorites = removeFavorite(places.favorites, id); await savePlaces(); renderPlaces(); renderProfile();
+}
+function placesCard(){
+  const favs = sortFavorites(places.favorites);
+  return '<div class="card"><h3>' + icon('star', {size:16}) + 'Indirizzi preferiti</h3>' +
+    (favs.length ? favs.map(f => '<div class="row" style="margin-top:6px"><input data-fav="' + esc(f.id) + '" value="' + esc(f.label) + '" aria-label="Nome del preferito ' + esc(f.label) + '"><button class="btn sec sm" onclick="renameFav(\'' + esc(f.id) + '\')">Rinomina</button><button class="btn sec sm" onclick="deleteFav(\'' + esc(f.id) + '\')" aria-label="Elimina ' + esc(f.label) + '">' + icon('trash-2', {size:13}) + '</button></div><div class="muted" style="font-size:12px">' + esc(f.name) + '</div>').join('')
+      : '<p class="muted">Nessun preferito. Cerca una destinazione in Home e salvala come Casa, Lavoro o con un nome.</p>') +
+    '<div class="kv" style="margin-top:8px"><span>Destinazioni recenti</span><b>' + places.recents.length + '</b></div>' +
+    (places.recents.length ? '<button class="btn sec sm" onclick="clearRecents()">Cancella cronologia</button>' : '') +
+    '<div class="note">Preferiti, recenti e contatti di emergenza restano solo su questo dispositivo: non vengono inviati ai nostri server.</div></div>';
+}
 function loginFields(){
   const em = $('#loginEmail').value.trim(), pw = $('#loginPwd').value;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) { toast('Email non valida'); return null; }
@@ -912,9 +1005,10 @@ function exportData(fmt){
  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 async function resetDemo(){
-  if (await confirmDialog('Ripristinare i dati demo?', 'Cancella segnalazioni, punti e contatti salvati su questo dispositivo.', 'Ripristina')) {
+  if (await confirmDialog('Ripristinare i dati demo?', 'Cancella segnalazioni, punti, contatti, preferiti e recenti salvati su questo dispositivo.', 'Ripristina')) {
     try { localStorage.removeItem(DB_KEY); } catch(e) {}
-    loadDB(); await reloadData(); toast('Dati demo ripristinati');
+    await clearPlaces(); await deviceRemove(CONTACTS_KEY);
+    loadDB(); await loadDeviceData(); renderPlaces(); await reloadData(); toast('Dati demo ripristinati');
   }
 }
 
@@ -1149,7 +1243,7 @@ async function init(){
   backend = await createBackend(() => DB, saveDB);
   const token = liveToken(location.search);
   if (token) { DB = {powerSave:false}; return startLiveViewer(token); }
-  loadDB(); initBattery(); initReportForm(); initBook();
+  loadDB(); await loadDeviceData(); initBattery(); initReportForm(); initBook();
   $('#loginNote').textContent = isLocal()
     ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
     : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating. Safe Taxi è riservata ai maggiori di 18 anni.';
@@ -1159,7 +1253,7 @@ async function init(){
   initBlurEditor();
  renderCityStats('roma');
   refreshAll();
-  initHome();
+  initHome(); renderPlaces();
   if (!DB.privacyOk) openModal('m-privacy');
   await backend.init(onAuthChange);
   await reloadData();
@@ -1172,4 +1266,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
