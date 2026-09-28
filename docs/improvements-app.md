@@ -15,8 +15,8 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-04 | Partenza modificabile, indirizzi preferiti e recenti (solo sul telefono) | P2 | no | fatto |
 | IMP-03 | Filtro del feed per città e parola chiave | P2 | sì (ricerca lato server) | fatto |
 | IMP-05b | Trend del termometro sugli ultimi 12 mesi (Italia e città) | P3 | sì (serie mensile) | fatto |
-| IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | da fare |
-| IMP-07 | Nuovo tipo di segnalazione "Taxi non disponibile / attesa lunga" | P3 | sì (nuovo tipo) | proposta |
+| IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | fatto in parte (fabbisogno e MEF: mancano i dati ufficiali) |
+| IMP-07 | Segnalazione di attesa/coda, heatmap delle attese, storico e previsioni | P3 | sì (nuovo tipo) | approvato, da fare |
 
 IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione).
 
@@ -79,8 +79,17 @@ Decisione di Roberto: funzione dell'app, dati salvati solo sul telefono.
 ### IMP-06 — Dati ufficiali
 Vedi la sezione "Fonti". Ogni dato salvato nel database con fonte, link, anno di riferimento e data di pubblicazione, mostrati in pagina.
 
+Stato (28/09/2026): tabella `public.official_figures` con licenze (ART 2024) e tariffe di 6 città (delibere in vigore), regola di aggiornamento in `src/lib/official.js`. Tolti "Richieste giornaliere stimate", "Richieste per licenza" e "Ricavo lordo orario stimato" (erano DEMO). Restano da fare quando esisteranno i dati: fabbisogno di licenze con la metodologia ART e ricavi/redditi MEF (oggi non pubblicati per città: in pagina lo si dichiara, senza stime); tariffe di Venezia, Genova, Palermo, Bari, Catania da leggere a mano.
+
 ### IMP-07 — Segnalazione "Taxi non disponibile / attesa lunga"
 Nuovo tipo di segnalazione con luogo, orario e minuti di attesa. Unico modo di avere un dato proprio sulla domanda non servita, mostrato come "dati Safe Taxi", separato dai dati ufficiali.
+
+Decisioni di Roberto (28/09/2026), approvato:
+- Motivazione: gestire le lunghe code di attesa, per esempio nelle grandi stazioni.
+- Nel modulo di segnalazione una spunta "Segnalazione di attesa/coda": la segnalazione è generica, **senza targa né licenza**, e conta solo per il rating della città.
+- **Heatmap delle zone di attesa**, consultabile a distanza (es. uscita di Roma Termini): l'app è utile anche solo in consultazione.
+- **Storico per data e ora**, distinguendo giorni festivi e lavorativi, per analisi a ritroso e previsioni (es. attesa a Natale 2026).
+- Sviluppo in due pull request: (1) segnalazione e heatmap; (2) storico e previsioni.
 
 ## Fonti per i dati di città e Italia
 
@@ -89,6 +98,10 @@ Decisione di Roberto: niente dati vecchi. Regola proposta, applicabile a tutti i
 - si usa sempre **l'ultima pubblicazione ufficiale**, uscita da non più di 12 mesi;
 - in pagina si mostrano sempre fonte, anno di riferimento e data di pubblicazione;
 - se la fonte non ha pubblicato negli ultimi 12 mesi, il dato si nasconde (non si mostra un dato scaduto).
+
+Precisazioni di Roberto (28/09/2026):
+- **Pubblicazioni periodiche** (es. licenze ART): tra 12 e 24 mesi dalla pubblicazione il dato resta visibile con l'avviso "ultima pubblicazione ufficiale oltre 12 mesi fa"; oltre 24 mesi si nasconde. Caso concreto: il dataset ART 2024 è del 24/09/2025 e ART non ha ancora pubblicato il successivo.
+- **Tariffe**: vale la delibera in vigore, qualunque sia la sua data; si mostra la delibera. Va ricontrollato periodicamente che non ne sia uscita una nuova.
 
 Limite da sapere: i dati fiscali hanno un ritardo strutturale. Il MEF pubblica nel 2026 i redditi dell'anno d'imposta 2024 (dichiarazioni presentate nel 2025). Non esiste un reddito dichiarato più recente: con una regola "dato riferito agli ultimi 12 mesi" il reddito non si potrebbe mai mostrare.
 
