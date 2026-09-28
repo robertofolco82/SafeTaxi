@@ -139,6 +139,16 @@ export function createSupabaseBackend(url, key){
       const published = await statusOf(reportId) === 'pubblicata';
       return {verified:verified(), pending:!published, points:published && verified() ? 50 : 0, attachmentErrors};
     },
+    // Segnalazione di attesa/coda (IMP-07): senza targa né licenza, con minuti di attesa e luogo.
+    async submitWaitReport(d){
+      await ensureSession();
+      const {data: reportId, error} = await sb.rpc('submit_wait_report', {p_city:d.city, p_rating:d.rating, p_description:d.description,
+        p_reporter_name:d.name, p_wait_min:d.wait, p_lat:d.lat, p_lng:d.lng, p_place:d.place || null, p_waited_at:new Date(d.waitedAt).toISOString()});
+      if (error) fail(error);
+      const attachmentErrors = await uploadAttachments(reportId, d.files);
+      const published = await statusOf(reportId) === 'pubblicata';
+      return {verified:verified(), pending:!published, points:published && verified() ? 50 : 0, attachmentErrors};
+    },
     async submitRideRating(d){
       await ensureSession();
       const {data: id, error} = await sb.rpc('submit_ride_rating', {p_city:d.city, p_driver_rating:d.driverRating, p_ride_rating:d.rideRating,

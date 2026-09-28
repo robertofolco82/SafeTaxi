@@ -16,6 +16,15 @@ export function createLocalBackend(getState, save){
     async feed(params){ return filterFeed(getState().reports, params); },
     async officialFigures(){ return OFFICIAL; },
     async thermometerTrend(city){ return trendOf(getState().reports.filter(r => !city || r.city === city)); },
+    async submitWaitReport(d){
+      const s = getState();
+      s.reports.push({id:'w' + Date.now(), createdAt:Date.now(), city:d.city, licenza:'', targa:'', type:'attesa', rating:d.rating,
+        description:d.description, wait:d.wait, place:d.place || '', waitedAt:d.waitedAt, verified:!!s.user, attachments:d.files.length,
+        demo:false, status:'in_moderazione', lat:+d.lat.toFixed(3), lng:+d.lng.toFixed(3)});
+      let points = award(POINTS.report, 'Segnalazione di attesa'); if (d.files.length) points += award(POINTS.attachments, 'Allegati a supporto');
+      save();
+      return {verified:!!s.user, pending:false, points};
+    },
     async submitReport(d){
       const s = getState();
       s.reports.push({id:'r' + Date.now(), createdAt:Date.now(), city:d.city, licenza:d.license.trim(), targa:normPlate(d.plate),

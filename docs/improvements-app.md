@@ -16,7 +16,7 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-03 | Filtro del feed per città e parola chiave | P2 | sì (ricerca lato server) | fatto |
 | IMP-05b | Trend del termometro sugli ultimi 12 mesi (Italia e città) | P3 | sì (serie mensile) | fatto |
 | IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | fatto in parte (fabbisogno e MEF: mancano i dati ufficiali) |
-| IMP-07 | Segnalazione di attesa/coda, heatmap delle attese, storico e previsioni | P3 | sì (nuovo tipo) | approvato, da fare |
+| IMP-07 | Segnalazione di attesa/coda, heatmap delle attese, storico e previsioni | P3 | sì (nuovo tipo) | parte 1 fatta (segnalazione e heatmap); parte 2 da fare (storico e previsioni) |
 
 IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione).
 

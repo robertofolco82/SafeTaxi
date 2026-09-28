@@ -111,6 +111,31 @@ test('feed filtrato sul server: città, parola chiave e pagine (IMP-03)', async 
   expect(calls.at(-1)).toMatchObject({p_city: 'roma', p_query: 'TASSAMETRI', p_kind: 'all'});
 });
 
+test('attesa/coda dal database: senza targa, moderata e sulla mappa delle attese (IMP-07)', async ({page}) => {
+  const place = `Termini ${Date.now()}`, description = `Coda ${Date.now()}: nessun taxi al parcheggio per quaranta minuti.`;
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
+  await page.check('#waitMode');
+  await page.fill('#reportForm [name=name]', 'Ospite Attesa');
+  await page.selectOption('#reportCity', 'roma');
+  await page.fill('#waitMin', '40');
+  await page.fill('#waitPlace', place);
+  await page.getByRole('button', {name: 'Usa GPS'}).click();
+  await expect(page.locator('#reportLoc')).toContainText('41.90');
+  await page.locator('#reportStars span').nth(0).click();
+  await page.fill('#reportForm [name=description]', description);
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('Segnalazione di attesa anonima inviata');
+  const [row] = await rest(`reports?description=eq.${encodeURIComponent(description)}&select=id,type,wait_min,place_name,status`);
+  expect(row).toMatchObject({type: 'attesa', wait_min: 40, place_name: place, status: 'in_moderazione'});
+  await moderate(description, 'pubblicata');
+  await page.reload();
+  await page.locator('nav.tabs').getByRole('button', {name: /Mappa/}).click();
+  await page.getByRole('button', {name: 'Attese (ultime 2 ore)'}).click();
+  await expect(page.locator('#waitSummary')).toContainText(place);
+  await expect(page.locator('#waitSummary')).toContainText('40 min · Attesa molto lunga');
+});
+
 test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazione immediata', async ({page}) => {
   const description = `Ospite ${Date.now()}: tassametro non avviato alla partenza della corsa.`;
   await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();

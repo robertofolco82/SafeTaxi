@@ -1,7 +1,7 @@
 /* Conversioni tra i dati del database Supabase e il formato usato dall'interfaccia. */
 
 // Colonne pubbliche di public.reports (le altre non sono leggibili dai client).
-export const PUBLIC_REPORT_COLUMNS = 'id,kind,city_key,type,rating,description,from_place,to_place,cost_eur,duration_min,lat_approx,lng_approx,plate_masked,verified,ride_verified,meter_eur,is_demo,created_at';
+export const PUBLIC_REPORT_COLUMNS = 'id,kind,city_key,type,rating,description,from_place,to_place,cost_eur,duration_min,lat_approx,lng_approx,plate_masked,verified,ride_verified,meter_eur,is_demo,created_at,wait_min,place_name,waited_at';
 
 const num = v => v == null ? null : Number(v);
 
@@ -9,7 +9,8 @@ export function fromDbReport(r){
   return {id:r.id, kind:r.kind, createdAt:Date.parse(r.created_at), city:r.city_key, type:r.type, rating:r.rating,
     description:r.description, from:r.from_place || '', to:r.to_place || '', cost:num(r.cost_eur), meter:num(r.meter_eur), duration:r.duration_min,
     verified:r.verified, rideVerified:!!r.ride_verified, attachments:0, demo:r.is_demo, lat:num(r.lat_approx), lng:num(r.lng_approx),
-    targa:r.plate_masked || '', licenza:''};
+    targa:r.plate_masked || '', licenza:'',
+    wait:r.wait_min ?? null, place:r.place_name || '', waitedAt:r.waited_at ? Date.parse(r.waited_at) : null};
 }
 
 // Posizione inviata solo se dentro i limiti accettati dal database (Italia); altrimenti non si allega.

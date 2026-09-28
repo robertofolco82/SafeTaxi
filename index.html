@@ -127,32 +127,50 @@
         <div id="anonNotice" class="note" style="margin-top:0"></div>
         <div id="reportRide" class="note hidden"></div>
         <button type="button" class="linkbtn" onclick="openModal('m-verifica')">Come verifichiamo le recensioni</button>
+        <label class="row" style="margin-top:10px;font-size:14px;align-items:flex-start">
+          <input type="checkbox" id="waitMode" name="waitMode" style="width:auto;margin-top:3px" onchange="setWaitMode(this.checked)">
+          <span><b>Segnalazione di attesa/coda</b><br><span class="muted" style="font-size:12px">Per le lunghe attese di un taxi (es. all'uscita di una stazione): senza targa né licenza, conta per il rating della città e compare sulla mappa delle attese.</span></span>
+        </label>
         <label class="f">Nome e cognome <span class="req">*</span></label>
         <input name="name" autocomplete="name">
-        <div class="row">
+        <div id="taxiFields" class="row">
           <div style="flex:1"><label class="f">Licenza <span class="req">*</span></label><input name="licenza" placeholder="es. 2468"></div>
           <div style="flex:1"><label class="f">Targa <span class="req">*</span></label><input name="targa" placeholder="AB123CD" style="text-transform:uppercase"></div>
         </div>
         <label class="f">Città <span class="req">*</span></label>
         <select name="city" id="reportCity"></select>
+        <div id="waitFields" class="hidden">
+          <div class="row">
+            <div style="flex:1"><label class="f" for="waitMin">Minuti di attesa <span class="req">*</span></label><input id="waitMin" name="waitMin" type="number" min="0" max="600" step="1" inputmode="numeric"></div>
+            <div style="flex:1"><label class="f" for="waitAt">Quando</label><input id="waitAt" name="waitAt" type="datetime-local"></div>
+          </div>
+          <label class="f" for="waitPlace">Punto preciso</label><input id="waitPlace" name="waitPlace" maxlength="120" placeholder="Es. Stazione Termini, uscita via Marsala">
+          <label class="f">Luogo dell'attesa <span class="req">*</span></label>
+          <div class="row"><input id="waitSearch" placeholder="Cerca un indirizzo o usa il GPS qui sotto" aria-label="Cerca il luogo dell'attesa" autocomplete="off"><button type="button" class="btn sm" onclick="searchWaitPlace()">Cerca</button></div>
+          <div id="waitResults" style="margin-top:6px"></div>
+        </div>
+        <div id="rideFields">
         <div class="row">
           <div style="flex:1"><label class="f">Da</label><input name="from" placeholder="Partenza"></div>
           <div style="flex:1"><label class="f">A</label><input name="to" placeholder="Arrivo"></div>
         </div>
         <label class="f">Tipo di segnalazione <span class="req">*</span></label>
         <select name="type" id="reportType"></select>
+        </div>
         <label class="f">Valutazione complessiva <span class="req">*</span></label>
         <div class="starpick" id="reportStars"></div>
+        <div id="amountFields">
         <div class="row">
           <div style="flex:1"><label class="f">Importo sul tassametro (€)</label><input name="meter" type="number" min="0" step="0.5" inputmode="decimal"></div>
           <div style="flex:1"><label class="f">Importo pagato (€)</label><input name="cost" type="number" min="0" step="0.5" inputmode="decimal"></div>
         </div>
         <label class="f">Durata (min)</label><input name="duration" type="number" min="1" step="1" inputmode="numeric" style="max-width:50%">
+        </div>
         <label class="f">Descrizione dell'accaduto <span class="req">*</span></label>
         <textarea name="description" id="reportDesc" placeholder="Racconta i fatti: cosa è successo, importi, orari, percorso (minimo 20 caratteri)" aria-describedby="descHelp"></textarea>
         <p id="descHelp" class="muted" style="font-size:12px;margin-top:4px">Con 4–5 stelle basta anche "OK". Con 1–3 stelle serve la descrizione dell'accaduto, almeno 20 caratteri.</p>
         <div id="descHint" class="note hidden" role="status"></div>
-        <label class="f">Luogo dell'accaduto</label>
+        <label class="f" id="locLabel">Luogo dell'accaduto</label>
         <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()"><span data-icon="map-pin" data-icon-size="14"></span>Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>
         <label class="f">Allegati (max 6 file, 10 MB ciascuno)</label>
         <div class="row" style="flex-wrap:wrap">
@@ -180,7 +198,11 @@
     <!-- MAPPA -->
     <section class="tab" id="tab-mappa">
       <div class="card">
-        <div class="row between"><h3><span data-icon="thermometer" data-icon-size="16"></span>Mappa dell'insoddisfazione</h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="row between"><h3><span data-icon="map" data-icon-size="16"></span><span id="mapTitle">Mappa dell'insoddisfazione</span></h3><span class="badge b-demo">DATI DEMO</span></div>
+        <div class="chips" style="margin-bottom:8px">
+          <button class="chip on" data-mapmode="insoddisfazione" onclick="setMapMode('insoddisfazione')"><span data-icon="thermometer" data-icon-size="13"></span>Insoddisfazione</button>
+          <button class="chip" data-mapmode="attese" onclick="setMapMode('attese')"><span data-icon="hourglass" data-icon-size="13"></span>Attese (ultime 2 ore)</button>
+        </div>
         <div class="row" style="margin-bottom:10px">
           <input id="citySearch" list="cityList" placeholder="Cerca una città…" autocomplete="off">
           <datalist id="cityList"></datalist>
@@ -188,7 +210,14 @@
           <button class="btn sec sm" onclick="resetItaly()" aria-label="Vista Italia"><span data-icon="globe" data-icon-size="16"></span></button>
         </div>
         <div class="map tall" id="italyMap"></div>
-        <div class="row muted" style="margin-top:8px;gap:12px;flex-wrap:wrap">
+        <div class="row muted hidden" id="legendWait" style="margin-top:8px;gap:12px;flex-wrap:wrap">
+          <span><span class="legend-dot" style="background:var(--st-good)"></span>meno di 10 min</span>
+          <span><span class="legend-dot" style="background:var(--st-caution)"></span>10–20 min</span>
+          <span><span class="legend-dot" style="background:var(--st-warning)"></span>20–40 min</span>
+          <span><span class="legend-dot" style="background:var(--st-critical)"></span>40 min e oltre</span>
+        </div>
+        <div id="waitSummary"></div>
+        <div class="row muted" id="legendMood" style="margin-top:8px;gap:12px;flex-wrap:wrap">
           <span><span class="legend-dot" style="background:var(--st-critical)"></span>critico</span>
           <span><span class="legend-dot" style="background:var(--st-warning)"></span>scarso</span>
           <span><span class="legend-dot" style="background:var(--st-caution)"></span>così così</span>
