@@ -9,8 +9,8 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 
 | ID | Miglioramento | Priorità | Tocca il backend | Stato |
 |----|---------------|----------|------------------|-------|
-| IMP-01 | Descrizione: "OK" basta per 4–5 stelle, 20 caratteri per 1–3 stelle | P1 | sì (migrazione `submit_report`) | da fare |
-| IMP-02 | Ricerca del rating con targa, licenza o entrambe | P1 | sì (migrazione `get_driver_rating`) | da fare |
+| IMP-01 | Descrizione: "OK" basta per 4–5 stelle, 20 caratteri per 1–3 stelle | P1 | sì (migrazione `submit_report`) | fatto (#19) |
+| IMP-02 | Ricerca del rating con targa, licenza o entrambe | P1 | sì (migrazione `get_driver_rating`) | fatto (#19) |
 | IMP-05a | Termometro a tachimetro + "Seleziona città" verso la Mappa | P1 | no | da fare |
 | IMP-04 | Partenza modificabile, indirizzi preferiti e recenti (solo sul telefono) | P2 | no | da fare |
 | IMP-03 | Filtro del feed per città e parola chiave | P2 | sì (ricerca lato server) | da fare |

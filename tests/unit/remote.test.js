@@ -25,7 +25,7 @@ describe('dati dal database', () => {
 describe('rating del tassista in modalità demo locale', () => {
   const reports = seedReports(Date.UTC(2026, 8, 26));
   it('restituisce la stessa struttura della funzione del database', () => {
-    const d = driverRatingFrom(reports, 'ab 123 cd');
+    const d = driverRatingFrom(reports, 'ab 123 cd', '');
     expect(d).toMatchObject({sufficient:true, verified_count:7, min_required:5, plate_masked:'AB•••CD', avg_rating:4, issues:{percorso:1}});
     expect(d.reports.length).toBeGreaterThanOrEqual(7);
     expect(d.reports[0]).not.toHaveProperty('targa');
@@ -33,5 +33,11 @@ describe('rating del tassista in modalità demo locale', () => {
   });
   it('non mostra il rating sotto le 5 segnalazioni verificate', () => {
     expect(driverRatingFrom(reports, 'ZZ999ZZ')).toEqual({sufficient:false, verified_count:0, min_required:5});
+  });
+  it('cerca per sola licenza, o per targa e licenza insieme (IMP-02)', () => {
+    expect(driverRatingFrom(reports, '', '2468')).toMatchObject({sufficient:true, verified_count:7});
+    expect(driverRatingFrom(reports, 'AB123CD', '2468')).toMatchObject({sufficient:true, verified_count:7});
+    expect(driverRatingFrom(reports, 'AB123CD', '9999')).toEqual({sufficient:false, verified_count:0, min_required:5});
+    expect(driverRatingFrom(reports, '', '')).toEqual({sufficient:false, verified_count:0, min_required:5});
   });
 });

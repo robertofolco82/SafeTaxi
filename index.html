@@ -70,11 +70,12 @@
     <section class="tab" id="tab-corsa">
       <div class="card">
         <h3><span data-icon="car-taxi-front" data-icon-size="16"></span>Chi ti viene a prendere?</h3>
-        <p class="muted">Inserisci la targa o la licenza del taxi che hai davanti: vedi il rating e le segnalazioni di quel taxi. Massimo 5 ricerche all'ora, per evitare la raccolta massiva di targhe.</p>
-        <div class="row" style="margin-top:8px">
-          <input id="lookupInput" placeholder="Targa o licenza (demo: AB123CD)" autocomplete="off">
-          <button class="btn sm" onclick="doLookup()">Verifica</button>
-        </div>
+        <p class="muted">Inserisci la targa, la licenza o entrambe del taxi che hai davanti: vedi il rating e le segnalazioni di quel taxi. Con entrambe il risultato è più preciso. Massimo 5 ricerche all'ora, per evitare la raccolta massiva di targhe.</p>
+        <form class="row" style="margin-top:8px;align-items:flex-end" onsubmit="doLookup(event)">
+          <div style="flex:1"><label class="f" for="lookupPlate">Targa</label><input id="lookupPlate" placeholder="Es. AB123CD" autocomplete="off" autocapitalize="characters"></div>
+          <div style="flex:1"><label class="f" for="lookupLicense">Licenza</label><input id="lookupLicense" placeholder="Es. 2468" autocomplete="off" inputmode="numeric"></div>
+          <button class="btn sm" type="submit">Verifica</button>
+        </form>
         <div id="lookupResult"></div>
       </div>
       <div class="card">
@@ -132,7 +133,8 @@
         </div>
         <label class="f">Durata (min)</label><input name="duration" type="number" min="1" step="1" inputmode="numeric" style="max-width:50%">
         <label class="f">Descrizione dell'accaduto <span class="req">*</span></label>
-        <textarea name="description" id="reportDesc" placeholder="Racconta i fatti: cosa è successo, importi, orari, percorso (minimo 20 caratteri)"></textarea>
+        <textarea name="description" id="reportDesc" placeholder="Racconta i fatti: cosa è successo, importi, orari, percorso (minimo 20 caratteri)" aria-describedby="descHelp"></textarea>
+        <p id="descHelp" class="muted" style="font-size:12px;margin-top:4px">Con 4–5 stelle basta anche "OK". Con 1–3 stelle serve la descrizione dell'accaduto, almeno 20 caratteri.</p>
         <div id="descHint" class="note hidden" role="status"></div>
         <label class="f">Luogo dell'accaduto</label>
         <div class="row"><button type="button" class="btn sec sm" onclick="attachLocation()"><span data-icon="map-pin" data-icon-size="14"></span>Usa GPS</button><span class="muted" id="reportLoc">Non allegato</span></div>

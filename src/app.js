@@ -13,7 +13,7 @@ import {createBackend} from './backend/index.js';
 import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
-import {textFlags, FLAG_HINTS} from './lib/textcheck.js';
+import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/textcheck.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
@@ -266,7 +266,7 @@ async function toggleRide(){ if (ride) endRide(); else await startRide(false); }
 async function startRide(sim){
   if (!rideMap) rideMap = makeMap('rideMap', [41.9, 12.5], 6);
   if (rideLine) rideLine.setLatLngs([]);
-  ride = {start:Date.now(), path:[], km:0, stopWatch:null, timer:null, simTimer:null, sim:!!sim, plate: normPlate($('#lookupInput').value)};
+  ride = {start:Date.now(), path:[], km:0, stopWatch:null, timer:null, simTimer:null, sim:!!sim, plate: normPlate($('#lookupPlate').value)};
   $('#rideBtn').innerHTML = icon('square', {size:16}) + 'Termina corsa'; $('#rideBtn').classList.add('red');
  $('#rideState').textContent = 'In corso'; $('#rideState').className = 'badge b-ok';
   ride.timer = setInterval(updateRideStats, 1000);
@@ -426,17 +426,19 @@ async function startLiveViewer(token){
 }
 
 /* ================= RATING TASSISTA ================= */
-async function doLookup(){
-  const q = $('#lookupInput').value, n = normPlate(q), box = $('#lookupResult');
-  if (!n) { box.innerHTML = ''; return; }
+async function doLookup(e){
+  if (e) e.preventDefault();
+  const plate = normPlate($('#lookupPlate').value), license = normPlate($('#lookupLicense').value), box = $('#lookupResult');
+  if (plate.length < 2 && license.length < 2) { box.innerHTML = '<div class="note">Inserisci la targa, la licenza o entrambe.</div>'; return; }
+  const q = plate.length >= 2 ? plate : license;
   box.innerHTML = '<p class="muted">Verifico…</p>';
   let d;
-  try { d = await backend.driverRating(n); } catch(e) { box.innerHTML = '<div class="note">' + esc(e.message) + '</div>'; return; }
+  try { d = await backend.driverRating(plate, license); } catch(e) { box.innerHTML = '<div class="note">' + esc(e.message) + '</div>'; return; }
   if (!d.sufficient) {
     box.innerHTML = '<div class="note">Storico insufficiente: ' + d.verified_count + ' segnalazioni verificate (minimo ' + d.min_required + '). Sotto questa soglia il rating non viene mostrato, a tutela del tassista.</div>'; return;
   }
   const crit = Object.keys(d.issues || {}).map(k => TYPES[k] + ' ×' + d.issues[k]).join(', ') || 'nessuna';
-  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b style="display:flex;align-items:center;gap:5px">' + icon('car-taxi-front', {size:15}) + esc(maskPlate(q)) + '</b>' + starsHtml(d.avg_rating) + '</div>' +
+  box.innerHTML = '<div class="note" style="font-size:13px"><div class="row between"><b style="display:flex;align-items:center;gap:5px">' + icon('car-taxi-front', {size:15}) + esc(maskPlate(q)) + (plate.length >= 2 && license.length >= 2 ? ' <span class="muted" style="font-weight:400">targa e licenza</span>' : '') + '</b>' + starsHtml(d.avg_rating) + '</div>' +
     '<div class="kv"><span>Rating medio</span><b>' + fmtNum(d.avg_rating, 1) + ' / 5</b></div>' +
     '<div class="kv"><span>Segnalazioni verificate</span><b>' + d.verified_count + '</b></div>' +
     '<div class="kv"><span>Criticità</span><b style="text-align:right">' + crit + '</b></div></div>' +
@@ -504,10 +506,16 @@ let reportRating = 0, attachments = [], reportGeo = null;
 function initReportForm(){
  $('#reportCity').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(CITIES).map(k => '<option value="' + k + '">' + CITIES[k].n + '</option>').join('');
  $('#reportType').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(TYPES).map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
- starPicker('reportStars', v => reportRating = v);
+ starPicker('reportStars', setReportRating);
  ['camPhoto','camVideo','micAudio','gallery'].forEach(id => document.getElementById(id).addEventListener('change', onFiles));
   $('#reportDesc').addEventListener('input', e => showTextHint('#descHint', e.target.value));
   $('#rateComment').addEventListener('input', e => showTextHint('#rateHint', e.target.value));
+}
+// IMP-01: testo di aiuto e segnaposto della descrizione cambiano con le stelle (regola in src/lib/textcheck.js).
+function setReportRating(v){
+  reportRating = v;
+ $('#descHelp').textContent = descHelp(v);
+ $('#reportDesc').placeholder = descPlaceholder(v);
 }
 // Avviso mentre si scrive: stesse regole dei controlli del database (src/lib/textcheck.js).
 function showTextHint(sel, text){
@@ -567,7 +575,7 @@ async function submitReport(e){
   if (!d.city) errs.push('città');
   if (!d.type) errs.push('tipo');
   if (!reportRating) errs.push('valutazione');
-  if (!d.description || d.description.trim().length < 20) errs.push('descrizione (min. 20 caratteri)');
+  if ((d.description || '').trim().length < descMin(reportRating)) errs.push(reportRating >= 4 ? 'commento (anche solo "OK")' : 'descrizione dell\'accaduto (min. 20 caratteri)');
   if (!d.consent) errs.push('dichiarazione e privacy');
   if (errs.length) return toast('Completa: ' + errs.join(', '));
   if (attachments.some(a => a.processing)) return toast('Attendi: sto preparando le foto');
@@ -581,7 +589,7 @@ async function submitReport(e){
       attachments:n, files:attachments.map(a => ({kind:a.kind, blob:a.file, faces:a.faces})), lat:pos.lat, lng:pos.lng});
     if (rideId) lastRide.claimed = true;
     attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
-    f.reset(); showTextHint('#descHint', ''); reportRating = 0; starPicker('reportStars', v => reportRating = v); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
+    f.reset(); showTextHint('#descHint', ''); setReportRating(0); starPicker('reportStars', setReportRating); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
     await afterSubmit(); openTab('home');
     toast(sentMessage(res, 'Segnalazione') + (res.attachmentErrors && res.attachmentErrors.length ? ' Allegati non caricati: ' + res.attachmentErrors.join('; ') : ''));
   } catch(err) { toast(err.message); }
@@ -752,7 +760,7 @@ function fillShareText(){
   if (c) $('#sharePhone').value = c.phone;
   if (shareEdited) return;
   const nome = c ? ' ' + c.name.split(' ')[0] : '';
-  const plate = (ride && ride.plate) || normPlate($('#lookupInput').value);
+  const plate = (ride && ride.plate) || normPlate($('#lookupPlate').value);
   const t = new Date().toLocaleTimeString('it-IT', {hour:'2-digit', minute:'2-digit'});
   const lines = [shareSOS ? 'Ciao' + nome + ', ho bisogno di aiuto.' : 'Ciao' + nome + ', ti avviso che sono su un taxi e ti condivido la mia posizione.'];
   if (geoLast.label) lines.push('📍 ' + geoLast.label);

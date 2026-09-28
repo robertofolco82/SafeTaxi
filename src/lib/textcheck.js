@@ -28,3 +28,14 @@ export const FLAG_HINTS = {
   insulto:'Togli insulti e parolacce: la segnalazione resta valida ed è più credibile.',
   dati_personali:'Non scrivere nomi, telefoni o email di altre persone: bastano targa e licenza, che non vengono pubblicate.',
 };
+
+// IMP-01: lunghezza minima della descrizione in base alle stelle (stessa regola di public.submit_report).
+// 4–5 stelle: basta anche "OK". 1–3 stelle (o stelle non ancora scelte): serve la descrizione dell'accaduto.
+export const descMin = rating => rating >= 4 ? 1 : 20;
+export function descHelp(rating){
+  if (rating >= 4) return 'Recensione positiva: basta anche solo "OK". Se vuoi, racconta cosa è andato bene.';
+  if (rating >= 1) return 'Recensione negativa o neutra: descrivi l\'accaduto, almeno 20 caratteri (cosa è successo, importi, orari, percorso).';
+  return 'Con 4–5 stelle basta anche "OK". Con 1–3 stelle serve la descrizione dell\'accaduto, almeno 20 caratteri.';
+}
+export const descPlaceholder = rating => rating >= 4 ? 'Anche solo "OK", oppure racconta com\'è andata'
+  : 'Racconta i fatti: cosa è successo, importi, orari, percorso (minimo 20 caratteri)';
