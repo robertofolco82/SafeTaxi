@@ -109,6 +109,12 @@ export function createSupabaseBackend(url, key){
       media = {photos, replies};
       return data.map(r => Object.assign(fromDbReport(r), {photos: photos[r.id] || [], replies: replies[r.id] || []}));
     },
+    // Termometro a fine mese negli ultimi 12 mesi (IMP-05b), Italia o città.
+    async thermometerTrend(city){
+      const {data, error} = await sb.rpc('get_thermometer_trend', {p_city:city || null, p_months:12});
+      if (error) fail(error);
+      return data.map(r => ({month:r.month, idx:r.idx, n:Number(r.month_count)}));
+    },
     // Feed filtrato sul server (IMP-03): città, tipo e parola chiave, a pagine (before = data dell'ultima mostrata).
     async feed({city = '', q = '', kind = 'all', before = null, limit = 12} = {}){
       const {data, error} = await sb.rpc('feed_reports', {p_city:city || null, p_query:q || null, p_kind:kind,

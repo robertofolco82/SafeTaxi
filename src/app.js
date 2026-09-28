@@ -15,6 +15,7 @@ import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
 import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/textcheck.js';
 import {gaugeSvg} from './lib/gauge.js';
+import {trendSvg} from './lib/trend.js';
 import {FEED_PAGE} from './lib/feed.js';
 import {addRecent, saveFavorite, renameFavorite, removeFavorite, sortFavorites, parsePlaces, FAVORITE_LABELS} from './lib/places.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
@@ -90,6 +91,7 @@ async function reloadData(){
     DB.myNotices = await backend.myContentNotices();
   } catch(e) { DB.points = 0; DB.ledger = []; DB.myReports = []; DB.myNotices = []; }
   loading = false;
+  trendCache = {};
   await loadFeed(true);
   refreshAll();
 }
@@ -209,12 +211,24 @@ function renderThermo(){
     '<div class="val">' + (v == null ? '—' : v) + '<span style="font-size:16px;color:var(--mut)">/100</span></div>' +
     '<div style="font-weight:700">' + m.l + '</div>' +
     '<button class="btn sec sm" style="margin:10px auto 0" onclick="openCitySearch()">' + icon('map-pin', {size:14}) + 'Seleziona città</button>' +
+    '<h3 style="margin-top:14px;text-align:left">Andamento negli ultimi 12 mesi</h3><div id="trendItalia" class="trend-box"></div>' +
     '<div class="stats3"><div class="stat"><b>' + fmtNum(DB.reports.length) + '</b><span>segnalazioni</span></div>' +
     '<div class="stat"><b>' + cities + '</b><span>città</span></div>' +
     '<div class="stat"><b>' + trTxt + '</b><span>vs 30 gg prec.</span></div></div>' +
     '<div class="note">Indice 0–100 calcolato solo sulle segnalazioni di utenti verificati (' + fmtNum(ver) + '), con peso che si dimezza ogni 90 giorni. <span class="badge b-demo">DATI DEMO</span></div>';
+  if (!loading) showTrend('trendItalia', null);
 }
 // Feed (IMP-03): tipo, città e parola chiave filtrati dal backend (sul server con Supabase), a pagine da 12.
+// IMP-05b: andamento mensile del Termometro, letto dal backend e tenuto in memoria fino al prossimo aggiornamento dei dati.
+let trendCache = {};
+async function showTrend(boxId, city){
+  const key = city || '', box = document.getElementById(boxId); if (!box) return;
+  try {
+    if (!trendCache[key]) trendCache[key] = backend.thermometerTrend(city || null);
+    const pts = await trendCache[key], el = document.getElementById(boxId);
+    if (el) el.innerHTML = trendSvg(pts, {title:'Andamento del Termometro ' + (city ? CITIES[city].n : 'Italia')});
+  } catch(e) { delete trendCache[key]; box.innerHTML = '<p class="muted" style="font-size:13px">Andamento non disponibile.</p>'; }
+}
 let feedFilter = 'all', feedCity = '', feedQuery = '', feedItems = [], feedMore = false, feedSeq = 0;
 function setFeedFilter(f){ feedFilter = f; $$('[data-feed]').forEach(b => b.classList.toggle('on', b.dataset.feed === f)); loadFeed(true); }
 function setFeedCity(c){ feedCity = c; loadFeed(true); }
@@ -777,6 +791,7 @@ function renderCityStats(k){
  $('#cityStats').innerHTML =
     '<h3>' + icon('landmark', {size:15}) + c.n + '</h3>' +
     '<div class="thermo">' + gaugeSvg(v, {width:160}) + '<div class="val" style="font-size:30px">' + (v == null ? '—' : v) + '<span style="font-size:14px;color:var(--mut)">/100</span></div><div style="font-weight:700">' + m.l + '</div></div>' +
+    '<h3 style="margin-top:10px">Andamento negli ultimi 12 mesi</h3><div id="trendCity" class="trend-box"></div>' +
     '<div class="kv"><span>Segnalazioni (verificate)</span><b>' + reps.length + ' (' + reps.filter(r => r.verified).length + ')</b></div>' +
     '<div class="kv"><span>Licenze taxi <span class="muted">(' + LIC_SRC + ')</span></span><b>' + fmtNum(c.lic) + '</b></div>' +
     '<div class="kv"><span>Richieste giornaliere stimate</span><b>' + fmtNum(c.dem) + ' <span class="badge b-demo">demo</span></b></div>' +
@@ -789,6 +804,7 @@ function renderCityStats(k){
     '<h3 style="margin-top:12px">Problemi segnalati</h3>' +
     (probs.length ? probs.map(p => { const pc = Math.round(cnt[p]/neg.length*100); return '<div class="pbar"><span class="t">' + TYPES[p] + '</span><span class="p"><i style="width:' + pc + '%"></i></span><b>' + pc + '%</b></div>'; }).join('') : '<p class="muted">Nessuna criticità segnalata.</p>') +
     '<div class="note">Ricavo lordo orario = costo medio al minuto × 60 × occupazione ipotizzata (' + Math.round(OCCUPANCY*100) + '%). Il confronto con i redditi dichiarati si fa solo su dati aggregati ufficiali e con metodologia pubblica, mai sul singolo tassista.</div>';
+  if (!loading) showTrend('trendCity', k);
 }
 
 /* ================= PRENOTA ================= */

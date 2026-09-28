@@ -2,7 +2,7 @@
    Solo per sviluppo e test offline: nessun dato lascia il dispositivo. */
 import {POINTS} from '../lib/config.js';
 import {normPlate} from '../lib/utils.js';
-import {driverRatingFrom} from '../lib/indices.js';
+import {driverRatingFrom, trendOf} from '../lib/indices.js';
 import {filterFeed} from '../lib/feed.js';
 
 export function createLocalBackend(getState, save){
@@ -13,6 +13,7 @@ export function createLocalBackend(getState, save){
     user: () => getState().user,
     async loadReports(){ return getState().reports; },
     async feed(params){ return filterFeed(getState().reports, params); },
+    async thermometerTrend(city){ return trendOf(getState().reports.filter(r => !city || r.city === city)); },
     async submitReport(d){
       const s = getState();
       s.reports.push({id:'r' + Date.now(), createdAt:Date.now(), city:d.city, licenza:d.license.trim(), targa:normPlate(d.plate),

@@ -54,3 +54,17 @@ export function driverRatingFrom(reports, plate, license){
   return {sufficient:true, verified_count:reps.length, min_required:MIN_DRIVER_REPORTS, plate_masked:maskPlate(p.length >= 2 ? p : l),
     avg_rating:Math.round(reps.reduce((a, r) => a + r.rating, 0)/reps.length*10)/10, issues, reports:list};
 }
+// IMP-05b: Termometro a fine mese negli ultimi 12 mesi (come public.get_thermometer_trend, mesi in UTC).
+// Il punto c'è solo con almeno MIN_TREND_REPORTS segnalazioni verificate nel mese.
+export const MIN_TREND_REPORTS = 5;
+export function trendOf(reports, now = Date.now(), months = 12){
+  const d = new Date(now), out = [];
+  for (let g = months - 1; g >= 0; g--) {
+    const start = Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - g, 1);
+    const end = Math.min(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() - g + 1, 1), now);
+    const upTo = reports.filter(r => r.createdAt <= end);
+    const n = upTo.filter(r => r.verified && r.createdAt >= start).length;
+    out.push({month:new Date(start).toISOString().slice(0, 10), idx:n >= MIN_TREND_REPORTS ? indexOf(upTo, end) : null, n});
+  }
+  return out;
+}

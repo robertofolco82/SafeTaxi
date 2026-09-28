@@ -125,3 +125,9 @@ nav.tabs button.on{color:var(--pri);font-weight:700}
 .news-item:last-child{border-bottom:0}
 .news-item b{font-family:var(--st-font-display);font-size:14px;line-height:1.35}
 a.news-item:hover b{text-decoration:underline}
+.trend{display:block;margin-top:4px;overflow:visible}
+.trend-pt:hover circle:last-of-type{r:6}
+.trend-data{margin-top:4px;font-size:12px;color:var(--mut);text-align:left}
+.trend-data summary{cursor:pointer}
+.trend-data table{width:100%;border-collapse:collapse;margin-top:4px}
+.trend-data th,.trend-data td{padding:3px 4px;border-bottom:1px solid var(--line);text-align:left;font-variant-numeric:tabular-nums}

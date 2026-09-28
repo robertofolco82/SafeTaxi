@@ -14,7 +14,7 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-05a | Termometro a tachimetro + "Seleziona città" verso la Mappa | P1 | no | fatto |
 | IMP-04 | Partenza modificabile, indirizzi preferiti e recenti (solo sul telefono) | P2 | no | fatto |
 | IMP-03 | Filtro del feed per città e parola chiave | P2 | sì (ricerca lato server) | fatto |
-| IMP-05b | Trend del termometro sugli ultimi 12 mesi (Italia e città) | P3 | sì (serie mensile) | da fare |
+| IMP-05b | Trend del termometro sugli ultimi 12 mesi (Italia e città) | P3 | sì (serie mensile) | fatto |
 | IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | da fare |
 | IMP-07 | Nuovo tipo di segnalazione "Taxi non disponibile / attesa lunga" | P3 | sì (nuovo tipo) | proposta |
 
