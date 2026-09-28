@@ -101,8 +101,10 @@ test('feed filtrato sul server: città, parola chiave e pagine (IMP-03)', async 
   page.on('request', r => { if (r.url().includes('/rpc/feed_reports')) calls.push(r.postDataJSON()); });
   await page.selectOption('#feedCity', 'roma');
   await page.fill('#feedQuery', 'TASSAMETRI');  // maiuscole e plurale: trova "tassametro"
+  const filtered = page.waitForResponse(r => r.url().includes('/rpc/feed_reports') && (r.request().postData() || '').includes('TASSAMETRI'));
   await page.press('#feedQuery', 'Enter');
-  await expect(page.locator('#feed .feed-item').first()).toBeVisible();
+  await filtered;
+  await expect(page.locator('#feed .feed-item').first()).toContainText(/tassametr/i);
   const items = page.locator('#feed .feed-item');
   for (const text of await items.allInnerTexts()) {
     expect(text).toContain('Roma');
@@ -134,6 +136,18 @@ test('attesa/coda dal database: senza targa, moderata e sulla mappa delle attese
   await page.getByRole('button', {name: 'Attese (ultime 2 ore)'}).click();
   await expect(page.locator('#waitSummary')).toContainText(place);
   await expect(page.locator('#waitSummary')).toContainText('40 min · Attesa molto lunga');
+});
+
+test('storico delle attese dal database: punti, profilo e stessa data (IMP-07)', async ({page}) => {
+  const year = new Date().getFullYear() - 1;
+  await page.locator('nav.tabs').getByRole('button', {name: /Mappa/}).click();
+  await page.getByRole('button', {name: 'Attese (ultime 2 ore)'}).click();
+  await expect(page.locator('#whPlace')).toContainText('Stazione Termini, uscita via Marsala');
+  await page.fill('#whDate', `${year}-12-25`);
+  await page.locator('#whDate').dispatchEvent('change');
+  await expect(page.locator('#whOut')).toContainText('Domenica o festivo (Natale)');
+  await expect(page.locator('#whOut')).toContainText('Fascia più lunga');
+  await expect(page.locator('#whOut')).toContainText(`${year - 1} · 8 segnalazioni`);
 });
 
 test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazione immediata', async ({page}) => {

@@ -16,7 +16,7 @@ Stato: `da fare` · `in corso` · `fatto` · `bloccato`.
 | IMP-03 | Filtro del feed per città e parola chiave | P2 | sì (ricerca lato server) | fatto |
 | IMP-05b | Trend del termometro sugli ultimi 12 mesi (Italia e città) | P3 | sì (serie mensile) | fatto |
 | IMP-06 | Dati ufficiali su licenze, fabbisogno, redditi, tariffe | P3 | sì (tabella con fonti) | fatto in parte (fabbisogno e MEF: mancano i dati ufficiali) |
-| IMP-07 | Segnalazione di attesa/coda, heatmap delle attese, storico e previsioni | P3 | sì (nuovo tipo) | parte 1 fatta (segnalazione e heatmap); parte 2 da fare (storico e previsioni) |
+| IMP-07 | Segnalazione di attesa/coda, heatmap delle attese, storico e previsioni | P3 | sì (nuovo tipo) | fatto: parte 1 (segnalazione e heatmap) e parte 2 (storico e previsioni) |
 
 IMP-01 e IMP-02 vanno nella stessa pull request (una migrazione).
 
@@ -90,6 +90,12 @@ Decisioni di Roberto (28/09/2026), approvato:
 - **Heatmap delle zone di attesa**, consultabile a distanza (es. uscita di Roma Termini): l'app è utile anche solo in consultazione.
 - **Storico per data e ora**, distinguendo giorni festivi e lavorativi, per analisi a ritroso e previsioni (es. attesa a Natale 2026).
 - Sviluppo in due pull request: (1) segnalazione e heatmap; (2) storico e previsioni.
+
+Parte 2, scelte tecniche (28/09/2026):
+- Tipo di giorno nell'ora italiana: lavorativo (lun–ven), sabato, domenica o festivo. Festività nazionali della L. 260/1949 e successive modifiche; San Francesco (4 ottobre) festa nazionale dal 2026 (L. 8 ottobre 2025 n. 151, GU n. 236 del 10/10/2025, in vigore dal 1/1/2026: https://www.gazzettaufficiale.it/eli/id/2025/10/10/25G00153/sg). Santi patroni esclusi: feste solo locali, DA VERIFICARE città per città se servono.
+- Previsione per una data: attesa media per fascia di 2 ore nei giorni dello stesso tipo, ultimi 24 mesi; in più la stessa data (giorno e mese) negli ultimi 5 anni, con media e massimo. Per città intera o per uno dei punti più segnalati (entro circa 300 m).
+- Contano solo segnalazioni di attesa pubblicate di account verificati; media mostrata solo con almeno 5 segnalazioni nella fascia, altrimenti "dati insufficienti".
+- Nel database: `get_wait_places`, `get_wait_profile`, `get_wait_same_date` (migrazione `20260928200000_storico_attese`); nel backend demo: `src/lib/waits.js` e `src/lib/holidays.js`. Dati DEMO: Termini e Milano Centrale, 24 mesi, con picchi a Natale, Capodanno e Ferragosto.
 
 ## Fonti per i dati di città e Italia
 

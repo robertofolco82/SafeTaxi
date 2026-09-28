@@ -3,7 +3,7 @@
 import {writeFileSync} from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {CITIES, COOPS, LIC_SRC} from '../src/lib/config.js';
-import {seedReports} from '../src/lib/seed.js';
+import {seedReports, DEMO_WAIT_PLACES, DEMO_WAIT_HOURS} from '../src/lib/seed.js';
 import {maskPlate} from '../src/lib/utils.js';
 
 const q = v => v == null ? 'null' : typeof v === 'number' ? String(v) : typeof v === 'boolean' ? String(v) : "'" + String(v).replace(/'/g, "''") + "'";
@@ -41,6 +41,27 @@ export function buildSeedSql(){
     "  ('Esempio · Nuovo bando comunale per licenze taxi', 'Fonte da configurare (comunicati dei Comuni)', null, true),",
     "  ('Esempio · Sciopero di categoria annunciato', 'Fonte da configurare (agenzie di stampa)', null, true),",
     "  ('Esempio · Nuove tariffe approvate dalla Giunta', 'Fonte da configurare (albo pretorio)', null, true);",
+    '',
+    '-- Attese DEMO per lo storico (IMP-07, parte 2): stessa logica di seedWaits in src/lib/seed.js, generate qui in SQL',
+    '-- perché i giorni festivi e le date (Natale, Ferragosto) devono corrispondere alla data di caricamento.',
+    '-- Ogni giorno da 2 a 730 giorni fa: 1 segnalazione per punto nei lavorativi, 2 il sabato e nei festivi, 6 in più nei picchi.',
+    'select setseed(0.2026);',
+    'insert into public.reports (kind, city_key, type, rating, description, lat, lng, wait_min, place_name, waited_at, verified, status, is_demo, created_at)',
+    'with places (city, lat, lng, place) as (values',
+    DEMO_WAIT_PLACES.map(p => `    (${q(p.city)}, ${p.lat}, ${p.lng}, ${q(p.place)})`).join(',\n') + '),',
+    `hours (h, wt) as (select h - 1, wt from unnest(array[${DEMO_WAIT_HOURS.join(', ')}]) with ordinality as w (wt, h)),`,
+    'cum as (select h, sum(wt) over (order by h) as c, sum(wt) over () as t from hours),',
+    "days as (select d, dt, private.day_type(dt) as ty, to_char(dt, 'MM-DD') in ('12-24', '12-25', '12-26', '12-31', '01-01', '08-15') as pk",
+    "  from generate_series(2, 730) d, lateral (select (now() at time zone 'Europe/Rome')::date - d as dt) x),",
+    'draws as (select p.*, days.*, random() as r1, random() as r2, random() as r3, random() as r4',
+    "  from days cross join places p cross join lateral generate_series(1, case when days.ty = 'lavorativo' then 1 else 2 end + case when days.pk then 6 else 0 end) i),",
+    'picked as (select draws.*, (select cum.h from cum where cum.c > draws.r1*cum.t order by cum.h limit 1) as hr from draws),',
+    'waits as (select picked.*, round(case when hr between 7 and 9 or hr between 17 and 20 then 18 when hr >= 22 or hr <= 5 then 12 else 8 end',
+    "    * case when ty = 'lavorativo' then 1 else 1.4 end * case when pk then 2.2 else 1 end * (0.6 + r3*0.8))::int as w,",
+    "    (dt + make_interval(hours => hr::int, mins => floor(r2*60)::int)) at time zone 'Europe/Rome' as ts from picked)",
+    "select 'segnalazione', city, 'attesa', case when w < 10 then 4 + round(r4) when w < 20 then 3 else 1 + round(r4) end,",
+    "  case when w < 10 then 'Taxi disponibili, attesa breve.' else 'Coda lunga al posteggio, pochi taxi disponibili.' end,",
+    "  lat, lng, w, place, ts, true, 'pubblicata', true, ts from waits;",
     '',
   ];
   return out.join('\n');

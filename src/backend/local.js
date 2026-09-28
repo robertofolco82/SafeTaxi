@@ -5,6 +5,7 @@ import {normPlate} from '../lib/utils.js';
 import {driverRatingFrom, trendOf} from '../lib/indices.js';
 import {filterFeed} from '../lib/feed.js';
 import {OFFICIAL} from '../lib/official-data.js';
+import {waitPlaces, waitProfile, sameDateHistory} from '../lib/waits.js';
 
 export function createLocalBackend(getState, save){
   const award = (n, why) => { const s = getState(); if (!s.user) return 0; s.points += n; s.ledger.unshift({ts:Date.now(), n, why}); s.ledger = s.ledger.slice(0, 30); return n; };
@@ -16,6 +17,9 @@ export function createLocalBackend(getState, save){
     async feed(params){ return filterFeed(getState().reports, params); },
     async officialFigures(){ return OFFICIAL; },
     async thermometerTrend(city){ return trendOf(getState().reports.filter(r => !city || r.city === city)); },
+    async waitPlaces(city){ return waitPlaces(getState().reports, city); },
+    async waitProfile(q){ return waitProfile(getState().reports, q); },
+    async waitSameDate(q){ return sameDateHistory(getState().reports, q); },
     async submitWaitReport(d){
       const s = getState();
       s.reports.push({id:'w' + Date.now(), createdAt:Date.now(), city:d.city, licenza:'', targa:'', type:'attesa', rating:d.rating,

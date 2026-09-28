@@ -217,6 +217,16 @@
           <span><span class="legend-dot" style="background:var(--st-critical)"></span>40 min e oltre</span>
         </div>
         <div id="waitSummary"></div>
+        <div id="waitHistory" class="hidden" style="margin-top:12px">
+          <div class="row between"><h3><span data-icon="calendar-clock" data-icon-size="14"></span>Storico e previsioni</h3><span class="badge b-demo hidden" id="whDemo">DATI DEMO</span></div>
+          <p class="muted" style="font-size:13px;margin:2px 0 8px">Scegli città, punto e data: vedi l'attesa tipica per fascia oraria in quel tipo di giorno (lavorativo, sabato, domenica o festivo) e com'è andata la stessa data negli anni precedenti.</p>
+          <div class="row" style="gap:8px;flex-wrap:wrap">
+            <select id="whCity" onchange="whCityChanged()" aria-label="Città dello storico" style="width:auto"></select>
+            <select id="whPlace" onchange="renderWaitHistory()" aria-label="Punto di attesa" style="width:auto;flex:1;min-width:160px"></select>
+            <input type="date" id="whDate" onchange="renderWaitHistory()" aria-label="Data" style="width:auto">
+          </div>
+          <div id="whOut" aria-live="polite"></div>
+        </div>
         <div class="row muted" id="legendMood" style="margin-top:8px;gap:12px;flex-wrap:wrap">
           <span><span class="legend-dot" style="background:var(--st-critical)"></span>critico</span>
           <span><span class="legend-dot" style="background:var(--st-warning)"></span>scarso</span>
