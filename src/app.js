@@ -14,6 +14,7 @@ import {dragRect} from './lib/faces.js';
 import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
 import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/textcheck.js';
+import {gaugeSvg} from './lib/gauge.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
 import {attachmentKind, MAX_ATTACHMENT_BYTES, MAX_ATTACHMENTS} from '../supabase/functions/_shared/attachment-types.js';
@@ -33,7 +34,6 @@ function mountIcons(root){
   });
 }
 // Umore del Termometro (v. src/lib/indices.js): la logica pura restituisce solo una chiave, mai un'icona.
-const MOOD_ICON = {insufficiente:'circle-help', critico:'angry', scarso:'frown', cosicosi:'meh', buono:'smile', ottimo:'laugh'};
 function starsHtml(n){
   const filled = starCount(n);
   return '<span class="stars">' + Array.from({length:5}, (_, i) => icon('star', {size:14, className: i < filled ? 'on' : ''})).join('') + '</span>';
@@ -137,6 +137,11 @@ function makeMap(id, center, zoom){
 }
 
 /* ================= NAVIGAZIONE / MODALI ================= */
+// IMP-05a: dal Termometro alla ricerca città nella tab Mappa.
+function openCitySearch(){
+  openTab('mappa');
+  const el = $('#citySearch'); el.scrollIntoView({block:'center'}); el.focus();
+}
 function openTab(name){
   $$('.tab').forEach(t => t.classList.toggle('active', t.id === 'tab-' + name));
   $$('nav.tabs button').forEach(b => b.classList.toggle('on', b.dataset.tab === name));
@@ -182,10 +187,10 @@ function renderThermo(){
   const ver = DB.reports.filter(r => r.verified).length;
  $('#thermo').innerHTML =
     '<div class="muted">Termometro Safe Taxi · Italia</div>' +
-    '<div class="mood-icon">' + icon(MOOD_ICON[m.k], {size:52}) + '</div>' +
-    '<div class="val" style="color:' + m.c + '">' + (v == null ? '—' : v) + '<span style="font-size:16px;color:var(--mut)">/100</span></div>' +
+    gaugeSvg(v) +
+    '<div class="val">' + (v == null ? '—' : v) + '<span style="font-size:16px;color:var(--mut)">/100</span></div>' +
     '<div style="font-weight:700">' + m.l + '</div>' +
-    '<div class="bar"><i style="left:' + (v == null ? 50 : v) + '%"></i></div>' +
+    '<button class="btn sec sm" style="margin:10px auto 0" onclick="openCitySearch()">' + icon('map-pin', {size:14}) + 'Seleziona città</button>' +
     '<div class="stats3"><div class="stat"><b>' + fmtNum(DB.reports.length) + '</b><span>segnalazioni</span></div>' +
     '<div class="stat"><b>' + cities + '</b><span>città</span></div>' +
     '<div class="stat"><b>' + trTxt + '</b><span>vs 30 gg prec.</span></div></div>' +
@@ -670,7 +675,7 @@ function renderNational(){
     '<div class="stat"><b>' + fmtNum(DB.reports.length) + '</b><span>Segnalazioni</span></div>' +
     '<div class="stat"><b>' + (pm ? fmtEur(pm) : '—') + '</b><span>Costo medio/min</span></div></div>' +
     '<h3 style="margin-top:14px">Classifica città</h3>' +
-    ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + CITIES[x.k].n + '</span><b style="display:flex;align-items:center;gap:5px;color:' + mood(x.v).c + '">' + icon(MOOD_ICON[mood(x.v).k], {size:14}) + x.v + '/100 <span class="muted">(' + x.n + ')</span></b></div>').join('') +
+    ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + CITIES[x.k].n + '</span><b style="display:flex;align-items:center;gap:5px;color:' + mood(x.v).c + '">' + '<span class="gauge-mini">' + gaugeSvg(x.v, {width:40}) + '</span><span class="rank-val">' + x.v + '/100</span> <span class="muted rank-n">(' + x.n + ')</span></b></div>').join('') +
     '<div class="muted" style="margin-top:6px">Licenze nelle città monitorate: ' + fmtNum(lic) + ' (fonte: ' + LIC_SRC + ')</div>';
 }
 function renderCityStats(k){
@@ -681,7 +686,8 @@ function renderCityStats(k){
   const ratio = c.dem/c.lic, gross = pm ? pm*60*OCCUPANCY : null;
   const rc = ratio > 6 ? '#dc2626' : ratio > 4 ? '#f97316' : '#16a34a';
  $('#cityStats').innerHTML =
-    '<div class="row between"><h3>' + icon('landmark', {size:15}) + c.n + '</h3><span class="badge" style="background:' + m.c + ';color:#fff">' + icon(MOOD_ICON[m.k], {size:12}) + (v == null ? 'n.d.' : v) + '/100</span></div>' +
+    '<h3>' + icon('landmark', {size:15}) + c.n + '</h3>' +
+    '<div class="thermo">' + gaugeSvg(v, {width:160}) + '<div class="val" style="font-size:30px">' + (v == null ? '—' : v) + '<span style="font-size:14px;color:var(--mut)">/100</span></div><div style="font-weight:700">' + m.l + '</div></div>' +
     '<div class="kv"><span>Segnalazioni (verificate)</span><b>' + reps.length + ' (' + reps.filter(r => r.verified).length + ')</b></div>' +
     '<div class="kv"><span>Licenze taxi <span class="muted">(' + LIC_SRC + ')</span></span><b>' + fmtNum(c.lic) + '</b></div>' +
     '<div class="kv"><span>Richieste giornaliere stimate</span><b>' + fmtNum(c.dem) + ' <span class="badge b-demo">demo</span></b></div>' +
@@ -1166,4 +1172,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

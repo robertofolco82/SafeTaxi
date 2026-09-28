@@ -39,11 +39,6 @@ import lock from 'lucide-static/icons/lock.svg?raw';
 import keyRound from 'lucide-static/icons/key-round.svg?raw';
 import eyeOff from 'lucide-static/icons/eye-off.svg?raw';
 import circleHelp from 'lucide-static/icons/circle-help.svg?raw';
-import angry from 'lucide-static/icons/angry.svg?raw';
-import frown from 'lucide-static/icons/frown.svg?raw';
-import meh from 'lucide-static/icons/meh.svg?raw';
-import smile from 'lucide-static/icons/smile.svg?raw';
-import laugh from 'lucide-static/icons/laugh.svg?raw';
 import star from 'lucide-static/icons/star.svg?raw';
 import x from 'lucide-static/icons/x.svg?raw';
 import messageCircle from 'lucide-static/icons/message-circle.svg?raw';
@@ -78,7 +73,7 @@ const ICONS = {
   'phone-call': phoneCall, house, 'building-2': buildingTwo, landmark, trophy, gift,
   'life-buoy': lifeBuoy, battery, 'battery-charging': batteryCharging, 'battery-low': batteryLow,
   package: pkg, lock, 'key-round': keyRound, 'eye-off': eyeOff, 'circle-help': circleHelp,
-  angry, frown, meh, smile, laugh, star, x, 'message-circle': messageCircle,
+  star, x, 'message-circle': messageCircle,
   'message-square': messageSquare, smartphone, clock, 'plane-takeoff': planeTakeoff,
   'circle-check-big': circleCheckBig, banknote, ban, route, 'octagon-alert': octagonAlert,
   'triangle-alert': triangleAlert, 'spray-can': sprayCan, 'mic-off': micOff, paperclip,

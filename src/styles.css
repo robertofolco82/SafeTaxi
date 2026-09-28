@@ -46,11 +46,11 @@ label.f{display:block;font-size:13px;font-weight:600;margin:10px 0 5px}
 .rec{background:var(--st-primary);color:#fff;border-color:var(--st-primary)}
 .rec::before{display:none}
 .thermo{text-align:center}
-.thermo .mood-icon{color:var(--mut);margin:2px 0 -2px}
-.thermo .mood-icon .icon{width:52px;height:52px}
+.gauge{display:block;margin:6px auto -4px;max-width:100%;height:auto}
+.gauge-mini .gauge{display:inline-block;margin:0;vertical-align:middle}
+.rank-val{min-width:4.6em;text-align:right;font-variant-numeric:tabular-nums}
+.rank-n{min-width:2.6em;text-align:right;font-variant-numeric:tabular-nums}
 .thermo .val{font-size:40px;font-weight:800;font-family:var(--st-font-display)}
-.bar{height:10px;border-radius:var(--st-radius-pill);background:linear-gradient(90deg,var(--st-critical),var(--st-warning),var(--st-caution),var(--st-good),var(--st-great));position:relative;margin:12px 0}
-.bar i{position:absolute;top:-5px;width:4px;height:20px;background:var(--txt);border-radius:2px;transform:translateX(-2px)}
 .stats3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:10px}
 .stat{background:var(--bg);border-radius:var(--st-radius-sm);padding:8px;text-align:center}
 .stat b{display:block;font-size:16px;font-family:var(--st-font-display)}
