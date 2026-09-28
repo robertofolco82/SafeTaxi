@@ -3,6 +3,7 @@
 import {POINTS} from '../lib/config.js';
 import {normPlate} from '../lib/utils.js';
 import {driverRatingFrom} from '../lib/indices.js';
+import {filterFeed} from '../lib/feed.js';
 
 export function createLocalBackend(getState, save){
   const award = (n, why) => { const s = getState(); if (!s.user) return 0; s.points += n; s.ledger.unshift({ts:Date.now(), n, why}); s.ledger = s.ledger.slice(0, 30); return n; };
@@ -11,6 +12,7 @@ export function createLocalBackend(getState, save){
     async init(){},
     user: () => getState().user,
     async loadReports(){ return getState().reports; },
+    async feed(params){ return filterFeed(getState().reports, params); },
     async submitReport(d){
       const s = getState();
       s.reports.push({id:'r' + Date.now(), createdAt:Date.now(), city:d.city, licenza:d.license.trim(), targa:normPlate(d.plate),

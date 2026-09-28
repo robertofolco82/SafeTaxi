@@ -70,6 +70,8 @@ export function createSupabaseBackend(url, key){
   }
 
   // Foto rese pubbliche dal moderatore: link temporanei (1 ora) raggruppati per segnalazione.
+  // Foto e repliche pubbliche caricate con le segnalazioni, riusate per le pagine del feed filtrato.
+  let media = {photos:{}, replies:{}};
   async function publicPhotos(){
     const {data, error} = await sb.from('attachments').select('report_id,storage_path').eq('is_public', true).eq('kind', 'foto').limit(300);
     if (error || !data.length) return {};
@@ -104,7 +106,15 @@ export function createSupabaseBackend(url, key){
       const {data, error} = await sb.from('reports').select(PUBLIC_REPORT_COLUMNS).order('created_at', {ascending:false}).limit(1000);
       if (error) fail(error);
       const [photos, replies] = await Promise.all([publicPhotos().catch(() => ({})), publicReplies().catch(() => ({}))]);
+      media = {photos, replies};
       return data.map(r => Object.assign(fromDbReport(r), {photos: photos[r.id] || [], replies: replies[r.id] || []}));
+    },
+    // Feed filtrato sul server (IMP-03): città, tipo e parola chiave, a pagine (before = data dell'ultima mostrata).
+    async feed({city = '', q = '', kind = 'all', before = null, limit = 12} = {}){
+      const {data, error} = await sb.rpc('feed_reports', {p_city:city || null, p_query:q || null, p_kind:kind,
+        p_before:before == null ? null : new Date(before).toISOString(), p_limit:limit});
+      if (error) fail(error);
+      return data.map(r => Object.assign(fromDbReport(r), {photos: media.photos[r.id] || [], replies: media.replies[r.id] || []}));
     },
     async submitReport(d){
       await ensureSession();
