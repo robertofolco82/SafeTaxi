@@ -27,7 +27,9 @@
 | File audio | Registrazioni allegate | Facoltativo | Funzionalità dell'app | Solo ai moderatori |
 | Attività nelle app → Contenuti generati dagli utenti | Testo delle segnalazioni e delle repliche, valutazioni | Facoltativo | Funzionalità dell'app | Pubblici dopo la moderazione, senza nome |
 
-**Non raccolti:** contatti della rubrica (i contatti di emergenza restano solo sul telefono), dati finanziari, dati sanitari, cronologia web, identificativi pubblicitari, analisi d'uso (nessun sistema di statistiche installato).
+**Trattati solo sul dispositivo (non raccolti, secondo la definizione di Google Play):** contatti di emergenza, indirizzi preferiti (Casa, Lavoro, etichette libere), ultime 10 destinazioni e punto di partenza scelto. Stanno nell'archivio del sistema operativo (`@capacitor/preferences`), non vengono mai inviati ai nostri server e si cancellano con "Elimina account" (preferiti e recenti) o disinstallando l'app. Le ricerche di indirizzi passano da OpenStreetMap Nominatim (servizio di terzi) solo quando l'utente preme "Cerca".
+
+**Non raccolti:** contatti della rubrica, dati finanziari, dati sanitari, cronologia web, identificativi pubblicitari, analisi d'uso (nessun sistema di statistiche installato).
 
 ## Permessi Android e dichiarazioni
 

@@ -40,6 +40,10 @@ import keyRound from 'lucide-static/icons/key-round.svg?raw';
 import eyeOff from 'lucide-static/icons/eye-off.svg?raw';
 import circleHelp from 'lucide-static/icons/circle-help.svg?raw';
 import star from 'lucide-static/icons/star.svg?raw';
+import navigation from 'lucide-static/icons/navigation.svg?raw';
+import history from 'lucide-static/icons/history.svg?raw';
+import briefcase from 'lucide-static/icons/briefcase.svg?raw';
+import bookmark from 'lucide-static/icons/bookmark.svg?raw';
 import x from 'lucide-static/icons/x.svg?raw';
 import messageCircle from 'lucide-static/icons/message-circle.svg?raw';
 import messageSquare from 'lucide-static/icons/message-square.svg?raw';
@@ -78,7 +82,7 @@ const ICONS = {
   'circle-check-big': circleCheckBig, banknote, ban, route, 'octagon-alert': octagonAlert,
   'triangle-alert': triangleAlert, 'spray-can': sprayCan, 'mic-off': micOff, paperclip,
   hourglass, check, mail, radio, 'undo-2': undoTwo, 'trash-2': trashTwo, 'refresh-cw': refreshCw,
-  eye, flag,
+  eye, flag, navigation, history, briefcase, bookmark,
 };
 
 export function icon(name, {size = 18, className = ''} = {}){

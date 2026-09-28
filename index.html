@@ -46,10 +46,20 @@
       <div class="card">
         <h3><span data-icon="map" data-icon-size="16"></span>Dove vai? Stima il costo</h3>
         <div class="map" id="homeMap"></div>
+        <div class="kv" style="margin-top:10px"><span><span data-icon="navigation" data-icon-size="14"></span> Partenza: <b id="startLabel">Posizione attuale</b></span>
+          <button type="button" class="btn sec sm" id="startToggle" onclick="toggleStartSearch()">Cambia</button></div>
+        <div id="startPanel" class="hidden">
+          <form class="row" style="margin-top:6px" onsubmit="searchStart(event)">
+            <input id="startInput" placeholder="Indirizzo di partenza" autocomplete="off" aria-label="Indirizzo di partenza">
+            <button class="btn sm" type="submit">Cerca</button>
+          </form>
+          <div id="startResults" style="margin-top:6px"></div>
+        </div>
         <form class="row" style="margin-top:10px" onsubmit="searchDestination(event)">
-          <input id="destInput" placeholder="Destinazione (es. Stazione Termini)" autocomplete="off">
+          <input id="destInput" placeholder="Destinazione (es. Stazione Termini)" autocomplete="off" aria-label="Destinazione">
           <button class="btn sm" type="submit">Cerca</button>
         </form>
+        <div id="placesBox"></div>
         <div id="destResults" style="margin-top:8px"></div>
         <div id="estimateBox"></div>
       </div>
