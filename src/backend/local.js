@@ -32,7 +32,7 @@ export function createLocalBackend(getState, save){
       save();
       return {verified:!!s.user, pending:false, points};
     },
-    async driverRating(q){ return driverRatingFrom(getState().reports, q); },
+    async driverRating(plate, license){ return driverRatingFrom(getState().reports, plate, license); },
     async myReports(){ return []; },
     async points(){ const s = getState(); return {total:s.points, ledger:s.ledger}; },
     async signIn(email){ getState().user = {name:email.split('@')[0], email, provider:'email'}; save(); return {needsConfirmation:false}; },

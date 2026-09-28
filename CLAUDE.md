@@ -115,9 +115,10 @@ Richieste di Roberto sull'app, con priorità e dipendenze dal backend: `docs/imp
 - Hosting della versione web: Vercel (produzione `https://safetaxi-nu.vercel.app`), collegato al repository (deploy automatico da `main` e anteprima per ogni pull request). Il piano gratuito Hobby è solo per uso non commerciale: con la pubblicità serve il piano Pro.
 - Punti: assegnati alla pubblicazione della segnalazione (anche automatica), tolti se il contenuto viene rimosso.
 - Coordinate pubbliche delle segnalazioni arrotondate a 3 decimali (circa 100 m); quelle esatte solo ai moderatori.
+- Descrizione della segnalazione (IMP-01, 28/09/2026): con 4–5 stelle basta anche "OK"; con 1–3 stelle almeno 20 caratteri con la descrizione dell'accaduto. Replica del tassista e segnalazione DSA restano a 20 caratteri.
 - Età minima: 18 anni (dichiarazione nel modulo di segnalazione, nota nell'accesso, termini d'uso).
 - Possibili reati nelle segnalazioni: si pubblicano se raccontati come fatti (diritto di critica: verità, pertinenza, continenza); non si pubblicano etichette ("truffatore", "ladro") e insulti. Safe Taxi non accerta fatti né reati e non è un canale di denuncia: l'avviso nel modulo rimanda a forze dell'ordine e 112.
-- Ricerca per targa o licenza (27/09/2026): mostra rating, criticità e, con almeno 5 segnalazioni verificate, le segnalazioni pubblicate di quel taxi con le repliche; targa sempre mascherata nel feed. Limite: 5 ricerche all'ora per utente (accesso anche anonimo) e 30 all'ora per indirizzo di rete (salvato solo come impronta, cancellata dopo 2 ore).
+- Ricerca per targa, licenza o entrambe (27/09/2026; due campi dal 28/09, IMP-02: con entrambi devono corrispondere tutti e due): mostra rating, criticità e, con almeno 5 segnalazioni verificate, le segnalazioni pubblicate di quel taxi con le repliche; targa sempre mascherata nel feed. Limite: 5 ricerche all'ora per utente (accesso anche anonimo) e 30 all'ora per indirizzo di rete (salvato solo come impronta, cancellata dopo 2 ore).
 - News: funzione `refresh-news` chiamata ogni ora da pg_cron sul progetto remoto (job `refresh-news`, SQL nel README).
 
 ## Decisioni aperte (chiedere prima di procedere)

@@ -1,7 +1,7 @@
 -- Test pgTAP del blocco 2a: si eseguono con `npm run test:db` (database locale Supabase).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(39);
 
 -- ---------------------------------------------------------------------
 -- Utenti di prova: verificato, anonimo, email non confermata, moderatore
@@ -64,7 +64,7 @@ select is((select plate_masked from public.reports where city_key = 'citta_test'
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 select throws_ok($$ select public.submit_report('citta_test', 'tariffa', 2, 'Troppo corta', 'Mario Rossi', 'AB123CD', '1234') $$,
-  '22023', 'Descrizione di almeno 20 caratteri', 'descrizione minima di 20 caratteri');
+  '22023', 'Per una valutazione da 1 a 3 stelle descrivi l''accaduto in almeno 20 caratteri', 'con 1–3 stelle descrizione minima di 20 caratteri');
 select throws_ok($$ select public.submit_report('citta_test', 'tariffa', 2, 'Descrizione lunga almeno venti caratteri',
   'Mario Rossi', 'XYZ', '1234') $$, '22023', 'Targa non valida (formato AB123CD)', 'formato targa controllato');
 select throws_ok($$ select public.submit_report('citta_test', 'tariffa', 2, 'Descrizione lunga almeno venti caratteri',
@@ -89,6 +89,11 @@ select set_config('request.jwt.claims', '{"sub":"33333333-3333-4333-8333-3333333
 select public.submit_report('citta_test', 'positiva', 5, 'Autista gentile e corsa puntuale, tutto regolare.',
   'Luca Verdi', 'LM321NP', '5555');
 select is((select verified from public.my_reports() limit 1), false, 'email non confermata: segnalazione non verificata');
+-- IMP-01: con 4–5 stelle basta anche "OK", ma non una descrizione vuota.
+select lives_ok($$ select public.submit_report('citta_test', 'positiva', 5, 'OK', 'Luca Verdi', 'QR654ST', '5555') $$,
+  'con 4–5 stelle basta "OK"');
+select throws_ok($$ select public.submit_report('citta_test', 'positiva', 4, '   ', 'Luca Verdi', 'UV987WX', '5555') $$,
+  '22023', 'Scrivi almeno un commento (anche solo "OK")', 'con 4–5 stelle serve comunque un commento');
 reset role;
 
 -- ---------------------------------------------------------------------
@@ -139,17 +144,17 @@ insert into private.reports_private (report_id, plate, license)
   select ('66666666-6666-4666-8666-' || lpad(i::text, 12, '0'))::uuid, 'ZZ999ZZ', '4242' from generate_series(1, 4) i;
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
-select is((public.get_driver_rating('zz 999 zz') ->> 'sufficient')::boolean, false, 'con 4 segnalazioni il rating non si mostra');
+select is((public.get_driver_rating(p_plate => 'zz 999 zz') ->> 'sufficient')::boolean, false, 'con 4 segnalazioni il rating non si mostra');
 reset role;
 insert into public.reports (id, city_key, type, rating, description, verified, status, is_demo)
   values ('66666666-6666-4666-8666-000000000005', 'citta_test', 'positiva', 5, 'Test', true, 'pubblicata', true);
 insert into private.reports_private (report_id, plate, license) values ('66666666-6666-4666-8666-000000000005', 'ZZ999ZZ', '4242');
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"11111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
-select is(public.get_driver_rating('4242') - 'issues' - 'reports',
+select is(public.get_driver_rating(p_license => '4242') - 'issues' - 'reports',
   '{"sufficient": true, "verified_count": 5, "min_required": 5, "plate_masked": "42•••42", "avg_rating": 4.2}'::jsonb,
   'con 5 segnalazioni verificate il rating si mostra (ricerca per licenza)');
-select is(public.get_driver_rating('ZZ999ZZ') -> 'issues', '{"tariffa": 1}'::jsonb, 'criticità conteggiate per tipo');
+select is(public.get_driver_rating(p_plate => 'ZZ999ZZ') -> 'issues', '{"tariffa": 1}'::jsonb, 'criticità conteggiate per tipo');
 reset role;
 
 -- ---------------------------------------------------------------------

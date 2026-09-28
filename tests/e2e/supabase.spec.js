@@ -68,18 +68,24 @@ test('i dati arrivano dal database: feed, Termometro e rating per targa', async 
   await expect(page.locator('#feed')).toContainText('•••');
   await expect(page.locator('#thermo .val')).not.toContainText('—');
   await page.getByRole('button', {name: /Corsa/}).click();
-  await page.fill('#lookupInput', 'AB123CD');
+  await page.fill('#lookupPlate', 'AB123CD');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('Segnalazioni verificate7');
   // Oltre al rating si vedono le segnalazioni di quel taxi, senza targa in chiaro.
   await expect(page.locator('#lookupResult')).toContainText('Segnalazioni su questo taxi');
   await expect(page.locator('#lookupResult .feed-item').first()).toBeVisible();
   await expect(page.locator('#lookupResult')).not.toContainText('AB123CD');
-  await page.fill('#lookupInput', 'ZZ999ZZ');
+  // Targa e licenza insieme: stesso taxi, stesse 7 segnalazioni (IMP-02).
+  await page.fill('#lookupLicense', '2468');
+  await page.getByRole('button', {name: 'Verifica'}).click();
+  await expect(page.locator('#lookupResult')).toContainText('targa e licenza');
+  await expect(page.locator('#lookupResult')).toContainText('Segnalazioni verificate7');
+  await page.fill('#lookupLicense', '');
+  await page.fill('#lookupPlate', 'ZZ999ZZ');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente: 0');
   // Limite di 5 ricerche all'ora per utente: la sesta è bloccata.
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 2; i++) {
     await page.getByRole('button', {name: 'Verifica'}).click();
     await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente');
   }
@@ -370,7 +376,7 @@ test('moderazione: dati riservati, sfocatura targhe, pubblicazione e replica del
 test('tracking live: il contatto segue la corsa dal link e a fine corsa non vede più la posizione', async ({page, browser}) => {
   test.setTimeout(120000);
   await page.getByRole('button', {name: /Corsa/}).click();
-  await page.fill('#lookupInput', 'AB123CD');
+  await page.fill('#lookupPlate', 'AB123CD');
   await page.evaluate(() => window.simulateRide());
   await expect(page.locator('#rideStreet')).toContainText('Via del Viminale', {timeout: 10000});
   await page.getByRole('button', {name: 'Condividi la corsa in tempo reale'}).click();
@@ -464,7 +470,7 @@ test('corsa verificata: la corsa registrata dal GPS dà il bollino alla valutazi
 
   // Corsa vera (GPS del browser simulato da Playwright), con la targa indicata prima di partire.
   await page.getByRole('button', {name: /Corsa/}).click();
-  await page.fill('#lookupInput', 'CV' + String(stamp).slice(-3) + 'ZZ');  // targa propria: non altera i rating degli altri test
+  await page.fill('#lookupPlate', 'CV' + String(stamp).slice(-3) + 'ZZ');  // targa propria: non altera i rating degli altri test
   await page.locator('#rideBtn').click();
   await expect(page.locator('#rideVerify')).toContainText('Corsa registrata per il bollino');
   const ride = async () => (await rest('rides?select=id,pings,distance_m,last_lat,report_id&order=started_at.desc&limit=1'))[0];

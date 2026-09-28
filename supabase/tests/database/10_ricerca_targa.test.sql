@@ -20,13 +20,13 @@ insert into public.driver_replies (report_id, body, status)
   values ('e6000000-0000-4000-8000-000000000001', 'Replica pubblicata del tassista alla segnalazione.', 'pubblicata');
 
 set local role anon;
-select throws_ok($$ select public.get_driver_rating('RT123RT') $$, '42501', null, 'senza accesso (anche anonimo) non si cerca');
+select throws_ok($$ select public.get_driver_rating(p_plate => 'RT123RT') $$, '42501', null, 'senza accesso (anche anonimo) non si cerca');
 reset role;
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"e5111111-1111-4111-8111-111111111111","role":"authenticated"}', true);
 select set_config('request.headers', '{"x-forwarded-for":"203.0.113.7, 10.0.0.1"}', true);
-select set_config('test.r', public.get_driver_rating('rt 123 rt')::text, true);
+select set_config('test.r', public.get_driver_rating(p_plate => 'rt 123 rt')::text, true);
 select is((current_setting('test.r')::jsonb->>'verified_count')::int, 5, 'il rating conta solo le segnalazioni verificate');
 select is(jsonb_array_length(current_setting('test.r')::jsonb->'reports'), 6,
   'si vedono le segnalazioni pubblicate del taxi, anche anonime, non quelle in revisione');
@@ -35,11 +35,11 @@ select is(current_setting('test.r')::jsonb->'reports'->0->'replies', '["Replica 
   'con le repliche pubblicate del tassista');
 select is(current_setting('test.r')::jsonb->'reports'->0->>'meter_eur', '24.00', 'con gli importi');
 select ok(not (current_setting('test.r')::jsonb->'reports'->0 ? 'plate'), 'senza targa né licenza in chiaro');
-select is((public.get_driver_rating('9191')->>'sufficient')::boolean, true, 'si cerca anche per licenza');
-select is((public.get_driver_rating('ZZ000ZZ')->>'sufficient')::boolean, false, 'sotto la soglia non si mostra nulla');
-select lives_ok($$ select public.get_driver_rating('RT123RT') $$, 'quarta ricerca dell''ora');
-select lives_ok($$ select public.get_driver_rating('RT123RT') $$, 'quinta ricerca dell''ora');
-select throws_ok($$ select public.get_driver_rating('RT123RT') $$, 'P0001', null, 'la sesta ricerca nell''ora è bloccata');
+select is((public.get_driver_rating(p_license => '9191')->>'sufficient')::boolean, true, 'si cerca anche per licenza');
+select is((public.get_driver_rating(p_plate => 'ZZ000ZZ')->>'sufficient')::boolean, false, 'sotto la soglia non si mostra nulla');
+select lives_ok($$ select public.get_driver_rating(p_plate => 'RT123RT') $$, 'quarta ricerca dell''ora');
+select lives_ok($$ select public.get_driver_rating(p_plate => 'RT123RT') $$, 'quinta ricerca dell''ora');
+select throws_ok($$ select public.get_driver_rating(p_plate => 'RT123RT') $$, 'P0001', null, 'la sesta ricerca nell''ora è bloccata');
 reset role;
 select is((select count(*)::int from private.lookup_log where user_id = 'e5111111-1111-4111-8111-111111111111'
                  and ip_hash is not null and ip_hash !~ '203\.0\.113'), 5,

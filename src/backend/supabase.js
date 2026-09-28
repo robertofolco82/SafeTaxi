@@ -125,9 +125,9 @@ export function createSupabaseBackend(url, key){
       return {verified:verified(), pending:!published, points:published && verified() ? 10 : 0};
     },
     // Richiede un accesso (anche anonimo, creato qui alla prima ricerca): il limite di 5 ricerche all'ora è per utente.
-    async driverRating(q){
+    async driverRating(plate, license){
       await ensureSession();
-      const {data, error} = await sb.rpc('get_driver_rating', {p_query:q});
+      const {data, error} = await sb.rpc('get_driver_rating', {p_plate:plate || null, p_license:license || null});
       if (error) fail(error);
       return data;
     },

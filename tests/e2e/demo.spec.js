@@ -56,13 +56,22 @@ test('stima del costo verso una destinazione', async ({page}) => {
 
 test('rating del tassista per targa, con targa mascherata', async ({page}) => {
   await page.getByRole('button', {name: /Corsa/}).click();
-  await page.fill('#lookupInput', 'AB123CD');
+  await page.fill('#lookupPlate', 'AB123CD');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('AB•••CD');
   await expect(page.locator('#lookupResult')).toContainText('Segnalazioni verificate');
-  await page.fill('#lookupInput', 'ZZ999ZZ');
+  await page.fill('#lookupPlate', 'ZZ999ZZ');
   await page.getByRole('button', {name: 'Verifica'}).click();
   await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente');
+  // IMP-02: basta la licenza; con targa e licenza devono corrispondere entrambe.
+  await page.fill('#lookupPlate', '');
+  await page.fill('#lookupLicense', '2468');
+  await page.getByRole('button', {name: 'Verifica'}).click();
+  await expect(page.locator('#lookupResult')).toContainText('Segnalazioni verificate');
+  await page.fill('#lookupPlate', 'AB123CD');
+  await page.fill('#lookupLicense', '9999');
+  await page.getByRole('button', {name: 'Verifica'}).click();
+  await expect(page.locator('#lookupResult')).toContainText('Storico insufficiente: 0');
 });
 
 test('segnalazione da ospite: campi obbligatori e invio', async ({page}) => {
@@ -80,6 +89,25 @@ test('segnalazione da ospite: campi obbligatori e invio', async ({page}) => {
   await page.locator('#reportForm').evaluate(f => f.requestSubmit());
   await expect(page.locator('#toast')).toContainText('Segnalazione anonima inviata');
   await expect(page.locator('#feed')).not.toContainText('Mario Rossi');
+});
+
+test('descrizione: con 4–5 stelle basta "OK", con 1–3 servono 20 caratteri', async ({page}) => {
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
+  await page.fill('#reportForm [name=name]', 'Mario Rossi');
+  await page.fill('#reportForm [name=licenza]', '1234');
+  await page.fill('#reportForm [name=targa]', 'CD456EF');
+  await page.selectOption('#reportCity', 'roma');
+  await page.selectOption('#reportType', 'positiva');
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportStars span').nth(1).click();
+  await expect(page.locator('#descHelp')).toContainText('descrivi l\'accaduto, almeno 20 caratteri');
+  await page.fill('#reportForm [name=description]', 'OK');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('descrizione dell\'accaduto (min. 20 caratteri)');
+  await page.locator('#reportStars span').nth(4).click();
+  await expect(page.locator('#descHelp')).toContainText('basta anche solo "OK"');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('Segnalazione anonima inviata');
 });
 
 test('SOS: il 112 non parte mai senza conferma', async ({page}) => {
