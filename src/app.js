@@ -15,6 +15,7 @@ import {shouldSendPosition, liveLink, liveToken, hhmm} from './lib/live.js';
 import {RIDE_RULES, shouldPingRide, rideIdForReport} from './lib/ride.js';
 import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/textcheck.js';
 import {gaugeSvg} from './lib/gauge.js';
+import {FEED_PAGE} from './lib/feed.js';
 import {addRecent, saveFavorite, renameFavorite, removeFavorite, sortFavorites, parsePlaces, FAVORITE_LABELS} from './lib/places.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
@@ -89,6 +90,7 @@ async function reloadData(){
     DB.myNotices = await backend.myContentNotices();
   } catch(e) { DB.points = 0; DB.ledger = []; DB.myReports = []; DB.myNotices = []; }
   loading = false;
+  await loadFeed(true);
   refreshAll();
 }
 
@@ -212,13 +214,25 @@ function renderThermo(){
     '<div class="stat"><b>' + trTxt + '</b><span>vs 30 gg prec.</span></div></div>' +
     '<div class="note">Indice 0–100 calcolato solo sulle segnalazioni di utenti verificati (' + fmtNum(ver) + '), con peso che si dimezza ogni 90 giorni. <span class="badge b-demo">DATI DEMO</span></div>';
 }
-let feedFilter = 'all';
-function setFeedFilter(f){ feedFilter = f; $$('[data-feed]').forEach(b => b.classList.toggle('on', b.dataset.feed === f)); renderFeed(); }
+// Feed (IMP-03): tipo, città e parola chiave filtrati dal backend (sul server con Supabase), a pagine da 12.
+let feedFilter = 'all', feedCity = '', feedQuery = '', feedItems = [], feedMore = false, feedSeq = 0;
+function setFeedFilter(f){ feedFilter = f; $$('[data-feed]').forEach(b => b.classList.toggle('on', b.dataset.feed === f)); loadFeed(true); }
+function setFeedCity(c){ feedCity = c; loadFeed(true); }
+function searchFeed(e){ e.preventDefault(); feedQuery = $('#feedQuery').value.trim(); loadFeed(true); }
+async function loadFeed(reset){
+  const seq = ++feedSeq, last = feedItems[feedItems.length - 1];
+  if (reset) { feedItems = []; feedMore = false; }
+  try {
+    const page = await backend.feed({city:feedCity, q:feedQuery, kind:feedFilter, before:reset || !last ? null : last.createdAt, limit:FEED_PAGE});
+    if (seq !== feedSeq) return;  // una richiesta più recente ha già aggiornato il feed
+    feedItems = feedItems.concat(page); feedMore = page.length === FEED_PAGE; feedError = null;
+  } catch(e) { if (seq !== feedSeq) return; feedError = e.message; }
+  renderFeed();
+}
+let feedError = null;
 function renderFeed(){
-  let list = DB.reports.slice().sort((a, b) => b.createdAt - a.createdAt);
-  if (feedFilter === 'pos') list = list.filter(r => r.type === 'positiva');
-  if (feedFilter === 'neg') list = list.filter(r => r.type !== 'positiva');
-  list = list.slice(0, 12);
+  const list = feedItems, filtered = feedFilter !== 'all' || feedCity || feedQuery;
+  $('#feedMore').classList.toggle('hidden', !feedMore);
   $('#feed').innerHTML = list.length ? list.map(r =>
     '<div class="feed-item ' + (r.type === 'positiva' ? 'pos' : 'neg') + '">' +
     '<div class="row between"><b>' + esc(CITIES[r.city] ? CITIES[r.city].n : r.city) + '</b><span class="muted">' + ago(r.createdAt) + '</span></div>' +
@@ -231,7 +245,7 @@ function renderFeed(){
       (!isLocal() ? '<br><button class="linkbtn" onclick="openNotice(\'replica\', \'' + d.id + '\')">Segnala questa replica</button>' : '') + '</div>').join('') +
     (!isLocal() && !r.demo ? '<div class="row" style="gap:14px"><button class="linkbtn" onclick="openReply(\'' + r.id + '\')">Sei il tassista? Replica</button>' +
       '<button class="linkbtn" onclick="openNotice(\'segnalazione\', \'' + r.id + '\')">Segnala contenuto</button></div>' : '') + '</div>'
-  ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : loadError ? 'Segnalazioni non disponibili: ' + esc(loadError) : 'Nessuna segnalazione.') + '</p>';
+  ).join('') : '<p class="muted">' + (loading ? 'Caricamento…' : (loadError || feedError) ? 'Segnalazioni non disponibili: ' + esc(loadError || feedError) : filtered ? 'Nessuna segnalazione con questi filtri.' : 'Nessuna segnalazione.') + '</p>';
 }
 function initHome(){
   homeMap = makeMap('homeMap', [42.3, 12.6], 5);
@@ -577,6 +591,7 @@ function sentMessage(res, what){
 }
 async function afterSubmit(){
   if (!isLocal()) { try { DB.myReports = await backend.myReports(); } catch(e) {} }
+  await loadFeed(true);
   refreshAll();
 }
 
@@ -1247,6 +1262,7 @@ async function init(){
   $('#loginNote').textContent = isLocal()
     ? 'Modalità demo locale: accesso simulato sul dispositivo, la password non viene salvata.'
     : 'Registrandoti con email riceverai un link di conferma: solo gli account confermati contano nei rating. Safe Taxi è riservata ai maggiori di 18 anni.';
+ $('#feedCity').innerHTML = '<option value="">Tutte le città</option>' + Object.keys(CITIES).map(k => '<option value="' + k + '">' + CITIES[k].n + '</option>').join('');
  $('#cityList').innerHTML = Object.values(CITIES).map(c => '<option value="' + c.n + '">').join('');
  $('#citySearch').addEventListener('change', searchCity);
  $('#shareText').addEventListener('input', () => { shareEdited = true; });
@@ -1266,4 +1282,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {setFeedCity, searchFeed, loadFeed, toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});

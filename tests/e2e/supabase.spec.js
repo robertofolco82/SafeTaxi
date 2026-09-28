@@ -95,6 +95,22 @@ test('i dati arrivano dal database: feed, Termometro e rating per targa', async 
   page.errors = page.errors.filter(e => !e.includes('status of 400'));
 });
 
+test('feed filtrato sul server: città, parola chiave e pagine (IMP-03)', async ({page}) => {
+  await expect(page.locator('#feed .feed-item')).toHaveCount(12);
+  const calls = [];
+  page.on('request', r => { if (r.url().includes('/rpc/feed_reports')) calls.push(r.postDataJSON()); });
+  await page.selectOption('#feedCity', 'roma');
+  await page.fill('#feedQuery', 'TASSAMETRI');  // maiuscole e plurale: trova "tassametro"
+  await page.press('#feedQuery', 'Enter');
+  await expect(page.locator('#feed .feed-item').first()).toBeVisible();
+  const items = page.locator('#feed .feed-item');
+  for (const text of await items.allInnerTexts()) {
+    expect(text).toContain('Roma');
+    expect(text.toLowerCase()).toContain('tassametr');
+  }
+  expect(calls.at(-1)).toMatchObject({p_city: 'roma', p_query: 'TASSAMETRI', p_kind: 'all'});
+});
+
 test('segnalazione da ospite: accesso anonimo, moderazione e nessuna pubblicazione immediata', async ({page}) => {
   const description = `Ospite ${Date.now()}: tassametro non avviato alla partenza della corsa.`;
   await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();

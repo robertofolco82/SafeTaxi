@@ -70,8 +70,14 @@
           <button class="chip on" data-feed="all" onclick="setFeedFilter('all')">Tutte</button>
           <button class="chip" data-feed="pos" onclick="setFeedFilter('pos')"><span data-icon="thumbs-up" data-icon-size="13"></span>Positive</button>
           <button class="chip" data-feed="neg" onclick="setFeedFilter('neg')"><span data-icon="thumbs-down" data-icon-size="13"></span>Negative</button>
+          <select id="feedCity" onchange="setFeedCity(this.value)" aria-label="Filtra per città" style="width:auto;padding:5px 8px;font-size:13px"></select>
         </div>
+        <form class="row" style="margin-bottom:10px" onsubmit="searchFeed(event)">
+          <input id="feedQuery" placeholder="Cerca nel testo (es. tassametro, aeroporto)" autocomplete="off" aria-label="Cerca nelle segnalazioni">
+          <button class="btn sm" type="submit">Cerca</button>
+        </form>
         <div id="feed"></div>
+        <button class="btn sec sm hidden" id="feedMore" style="margin:8px 0" onclick="loadFeed(false)">Mostra altre</button>
         <button class="linkbtn" onclick="openModal('m-verifica')">Come verifichiamo le recensioni</button>
       </div>
     </section>

@@ -88,6 +88,23 @@ test('prenota: numeri verificati e avviso su quelli da verificare', async ({page
   await expect(page.locator('#bookList')).toContainText('Numero da verificare');
 });
 
+test('feed: filtro per città, parola chiave e pagine (IMP-03)', async ({page}) => {
+  await expect(page.locator('#feed .feed-item')).toHaveCount(12);
+  await expect(page.locator('#feedMore')).toBeVisible();
+  await page.locator('#feedMore').click();
+  await expect(page.locator('#feed .feed-item')).toHaveCount(24);
+  await page.selectOption('#feedCity', 'milano');
+  await expect(page.locator('#feed .feed-item').first()).toContainText('Milano');
+  expect(new Set(await page.locator('#feed .feed-item > .row b').allInnerTexts())).toEqual(new Set(['Milano']));
+  await page.fill('#feedQuery', 'parola-che-non-esiste');
+  await page.press('#feedQuery', 'Enter');
+  await expect(page.locator('#feed')).toContainText('Nessuna segnalazione con questi filtri');
+  await page.fill('#feedQuery', '');
+  await page.press('#feedQuery', 'Enter');
+  await page.selectOption('#feedCity', '');
+  await expect(page.locator('#feed .feed-item')).toHaveCount(12);
+});
+
 test('stima del costo verso una destinazione', async ({page}) => {
   await page.fill('#destInput', 'Stazione Termini');
   await page.press('#destInput', 'Enter');
