@@ -1,19 +1,19 @@
 -- DATI DEMO generati da scripts/generate-seed.mjs: NON modificare a mano, NON caricare in produzione.
--- Segnalazioni, domanda stimata e rating delle cooperative sono inventati: righe marcate is_demo.
+-- Segnalazioni e rating delle cooperative sono inventati: righe marcate is_demo.
 -- Licenze (ART 2024), numeri delle cooperative (phone_verified) e tariffe indicate in source sono verificati.
 
 insert into public.cities (key, name, lat, lng, licenses, daily_demand, tariff_start, tariff_km, is_demo, source) values
-  ('roma', 'Roma', 41.9028, 12.4964, 7701, 38000, 3.5, 1.33, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Roma Capitale, Delibera G.C. n. 157 del 21/05/2026. Domanda giornaliera: DEMO.'),
-  ('milano', 'Milano', 45.4642, 9.19, 4855, 30000, 4.1, 1.32, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Regione Lombardia, D.G.R. XII/2569 del 17/06/2024, confermata dalla D.G.R. XII/4445 del 26/05/2025. Domanda giornaliera: DEMO.'),
-  ('napoli', 'Napoli', 40.8518, 14.2681, 2364, 16000, 4, 1.19, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Napoli, Delibera G.C. n. 258 del 27/06/2024. Domanda giornaliera: DEMO.'),
-  ('torino', 'Torino', 45.0703, 7.6869, 1501, 9000, 3.5, 1.75, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Città Metropolitana di Torino, D.C.R. n. 186 del 14/06/2023. Domanda giornaliera: DEMO.'),
-  ('firenze', 'Firenze', 43.7696, 11.2558, 724, 6500, 3.8, 1.1, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Firenze, tabella tariffe taxi in vigore dal 1/5/2024. Domanda giornaliera: DEMO.'),
-  ('bologna', 'Bologna', 44.4949, 11.3426, 722, 5000, 3.9, 1.45, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Bologna, tariffe in vigore dal 1/1/2025. Domanda giornaliera: DEMO.'),
-  ('venezia', 'Venezia', 45.4408, 12.3155, 120, 3000, 3.5, 1.3, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare. Domanda giornaliera: DEMO.'),
-  ('genova', 'Genova', 44.4056, 8.9463, 868, 5000, 3.5, 1.25, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare. Domanda giornaliera: DEMO.'),
-  ('palermo', 'Palermo', 38.1157, 13.3615, 319, 4500, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare. Domanda giornaliera: DEMO.'),
-  ('bari', 'Bari', 41.1171, 16.8719, 150, 2500, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare. Domanda giornaliera: DEMO.'),
-  ('catania', 'Catania', 37.5079, 15.083, 188, 2500, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare. Domanda giornaliera: DEMO.');
+  ('roma', 'Roma', 41.9028, 12.4964, 7701, null, 3.5, 1.33, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Roma Capitale, Delibera G.C. n. 157 del 21/05/2026.'),
+  ('milano', 'Milano', 45.4642, 9.19, 4855, null, 4.1, 1.32, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Regione Lombardia, D.G.R. XII/2569 del 17/06/2024, confermata dalla D.G.R. XII/4445 del 26/05/2025.'),
+  ('napoli', 'Napoli', 40.8518, 14.2681, 2364, null, 4, 1.19, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Napoli, Delibera G.C. n. 258 del 27/06/2024.'),
+  ('torino', 'Torino', 45.0703, 7.6869, 1501, null, 3.5, 1.75, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Città Metropolitana di Torino, D.C.R. n. 186 del 14/06/2023.'),
+  ('firenze', 'Firenze', 43.7696, 11.2558, 724, null, 3.8, 1.1, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Firenze, tabella tariffe taxi in vigore dal 1/5/2024.'),
+  ('bologna', 'Bologna', 44.4949, 11.3426, 722, null, 3.9, 1.45, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: Comune di Bologna, tariffe in vigore dal 1/1/2025.'),
+  ('venezia', 'Venezia', 45.4408, 12.3155, 120, null, 3.5, 1.3, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare.'),
+  ('genova', 'Genova', 44.4056, 8.9463, 868, null, 3.5, 1.25, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare.'),
+  ('palermo', 'Palermo', 38.1157, 13.3615, 319, null, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare.'),
+  ('bari', 'Bari', 41.1171, 16.8719, 150, null, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare.'),
+  ('catania', 'Catania', 37.5079, 15.083, 188, null, 3.3, 1.2, true, 'Licenze: ART, Diffusione TAXI e NCC 2024. Tariffa: DEMO, da verificare.');
 
 insert into public.coops (city_key, name, phone, features, phone_verified, is_demo) values
   ('roma', 'Radiotaxi 3570', '063570', array['h24']::text[], true, true),

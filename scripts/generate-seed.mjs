@@ -11,7 +11,7 @@ const uuid = i => '00000000-0000-4000-8000-' + String(i).padStart(12, '0');
 
 export const SEED_PATH = fileURLToPath(new URL('../supabase/seed.sql', import.meta.url));
 
-const citySource = c => 'Licenze: ' + LIC_SRC + '. Tariffa: ' + (c.tv ? c.tSrc : 'DEMO, da verificare') + '. Domanda giornaliera: DEMO.';
+const citySource = c => 'Licenze: ' + LIC_SRC + '. Tariffa: ' + (c.tv ? c.tSrc : 'DEMO, da verificare') + '.';
 
 export function buildSeedSql(){
   // createdAt relativo: generato con now = 0, in SQL diventa now() meno l'età della segnalazione.
@@ -19,12 +19,12 @@ export function buildSeedSql(){
 
   const out = [
     '-- DATI DEMO generati da scripts/generate-seed.mjs: NON modificare a mano, NON caricare in produzione.',
-    '-- Segnalazioni, domanda stimata e rating delle cooperative sono inventati: righe marcate is_demo.',
+    '-- Segnalazioni e rating delle cooperative sono inventati: righe marcate is_demo.',
     '-- Licenze (ART 2024), numeri delle cooperative (phone_verified) e tariffe indicate in source sono verificati.',
     '',
     'insert into public.cities (key, name, lat, lng, licenses, daily_demand, tariff_start, tariff_km, is_demo, source) values',
     Object.entries(CITIES).map(([k, c]) =>
-      `  (${[k, c.n, c.lat, c.lng, c.lic, c.dem, c.t.start, c.t.km].map(q).join(', ')}, true, ${q(citySource(c))})`).join(',\n') + ';',
+      `  (${[k, c.n, c.lat, c.lng, c.lic, null, c.t.start, c.t.km].map(q).join(', ')}, true, ${q(citySource(c))})`).join(',\n') + ';',
     '',
     'insert into public.coops (city_key, name, phone, features, phone_verified, is_demo) values',
     Object.entries(COOPS).flatMap(([k, list]) => list.map(c =>

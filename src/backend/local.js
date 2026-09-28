@@ -4,6 +4,7 @@ import {POINTS} from '../lib/config.js';
 import {normPlate} from '../lib/utils.js';
 import {driverRatingFrom, trendOf} from '../lib/indices.js';
 import {filterFeed} from '../lib/feed.js';
+import {OFFICIAL} from '../lib/official-data.js';
 
 export function createLocalBackend(getState, save){
   const award = (n, why) => { const s = getState(); if (!s.user) return 0; s.points += n; s.ledger.unshift({ts:Date.now(), n, why}); s.ledger = s.ledger.slice(0, 30); return n; };
@@ -13,6 +14,7 @@ export function createLocalBackend(getState, save){
     user: () => getState().user,
     async loadReports(){ return getState().reports; },
     async feed(params){ return filterFeed(getState().reports, params); },
+    async officialFigures(){ return OFFICIAL; },
     async thermometerTrend(city){ return trendOf(getState().reports.filter(r => !city || r.city === city)); },
     async submitReport(d){
       const s = getState();

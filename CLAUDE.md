@@ -46,7 +46,7 @@ Si sostiene con pubblicità non invasiva.
    - Heatmap dell'insoddisfazione, zoom fino al livello città, ricerca città.
    - Statistiche nazionali e per città: licenze attive vs fabbisogno calcolato con la metodologia ART (delibera 46/2022), costo medio al minuto.
    - "Corse al giorno equivalenti ai ricavi dichiarati" (ricavi medi MEF ÷ giorni di servizio ÷ prezzo della corsa tipo da delibera tariffaria) e, a parte, reddito medio dichiarato MEF: solo a livello aggregato, formula e fonti in pagina. Niente ricavo orario stimato (deciso da Roberto).
-   - Fonti ufficiali: sempre l'ultima pubblicazione, uscita da non più di 12 mesi, con fonte, anno di riferimento e data di pubblicazione in pagina; se scaduta, il dato non si mostra. Dettagli in `docs/improvements-app.md`.
+   - Fonti ufficiali (tabella `public.official_figures`, regola in `src/lib/official.js`): sempre l'ultima pubblicazione, con fonte, anno di riferimento e data di pubblicazione in pagina. Pubblicazioni periodiche: fino a 12 mesi normali, tra 12 e 24 mesi con avviso, oltre 24 mesi nascoste. Tariffe: vale la delibera in vigore. Dettagli in `docs/improvements-app.md`.
 10. Prenota
     - Uber in cima, con link allo store del dispositivo.
     - Poi le cooperative della città, ordinate per rating Safe Taxi. Chiamata con conferma.
@@ -73,8 +73,9 @@ Si sostiene con pubblicità non invasiva.
 
 ## Da verificare prima del rilascio
 - Dati verificati il 27/09/2026 (fonti in `docs/fonti-dati.md`): numeri delle cooperative di 11 città, link agli store, licenze (ART 2024), tariffe di Roma, Milano, Napoli, Torino, Firenze e Bologna.
-- Ancora da verificare: tariffe di Venezia, Genova, Palermo, Bari e Catania (tariffari da leggere a mano); numeri di La Capitale (Roma) e Nuova Co.Ta.Ba. (Bari); domanda giornaliera stimata (nessuna fonte ufficiale).
+- Ancora da verificare: tariffe di Venezia, Genova, Palermo, Bari e Catania (tariffari da leggere a mano); numeri di La Capitale (Roma) e Nuova Co.Ta.Ba. (Bari). La domanda giornaliera stimata è stata tolta (nessuna fonte ufficiale).
 - Redditi medi dichiarati: il MEF non li pubblica per città (open data per codice attività solo sopra 100.000 euro; ISA DG72U mescola taxi e NCC ed esclude i forfettari). Il confronto resta nascosto finché non c'è una fonte ufficiale aggregata.
+- Licenze ART: il dataset 2024 (pubblicato il 24/09/2025) ha più di 12 mesi e si mostra con l'avviso; aggiornare `src/lib/official-data.js` e la tabella quando ART pubblica il nuovo.
 - Termini di Google sull'uso dei feed RSS di Google News in un'app con pubblicità (se non compatibili: passare ai feed diretti delle testate).
 - Fornitore delle mappe per la produzione: le tile pubbliche di OSM non sono pensate per uso intensivo. Rispettare i limiti d'uso di Nominatim.
 

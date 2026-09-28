@@ -197,6 +197,12 @@ test('mappa Italia e prenotazione', async ({page}) => {
   await page.fill('#citySearch', 'Milano');
   await page.locator('#citySearch').dispatchEvent('change');
   await expect(page.locator('#cityStats')).toContainText('Milano');
+  // IMP-06: dati ufficiali con fonte e link; nessuna stima inventata.
+  await expect(page.locator('#cityStats')).toContainText('Dati ufficiali');
+  await expect(page.locator('#cityStats a', {hasText: 'ART'})).toHaveAttribute('href', /autorita-trasporti\.it/);
+  await expect(page.locator('#cityStats')).toContainText('D.G.R. XII/2569');
+  await expect(page.locator('#cityStats')).not.toContainText('Richieste giornaliere');
+  await expect(page.locator('#cityStats')).not.toContainText('Ricavo lordo orario');
   await expect(page.locator('#cityStats svg.gauge')).toHaveAttribute('aria-label', /Termometro/);
   await expect(page.locator('#trendCity svg.trend, #trendCity p')).toHaveCount(1);
   await expect(page.locator('#nationalStats .gauge-mini svg.gauge').first()).toHaveAttribute('aria-label', /^Termometro \d+ su 100: /);

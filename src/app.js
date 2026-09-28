@@ -2,7 +2,8 @@
    Le regole di calcolo pure stanno in ./lib e sono coperte dai test.
    I dati arrivano dal backend (./backend): Supabase, oppure demo locale se non configurato. */
 import L from 'leaflet';
-import {CITIES, LIC_SRC, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS, OCCUPANCY} from './lib/config.js';
+import {CITIES, APPS, COOPS, STORES, TYPES, TYPE_ICONS, NEG, FILTERS, FILTER_ICONS, REWARDS} from './lib/config.js';
+import {figure, sourceLine} from './lib/official.js';
 import {esc, fmtNum, fmtEur, fmtTel, ago, haversine, normPlate, maskPlate, starCount} from './lib/utils.js';
 import {seedReports} from './lib/seed.js';
 import {indexOf, mood, perMinOf, nearestCity, estimateTrip, isRec, level} from './lib/indices.js';
@@ -83,6 +84,7 @@ async function reloadData(){
     DB.reports = await backend.loadReports();
     loadError = null;
   } catch(e) { DB.reports = []; loadError = e.message; }
+  try { DB.official = await backend.officialFigures(); } catch(e) { DB.official = []; }
   DB.user = backend.user();
   DB.role = await backend.role().catch(() => 'utente');
   try {
@@ -772,39 +774,45 @@ async function geocodeCity(q){
 function renderNational(){
   const v = indexOf(DB.reports), m = mood(v), pm = perMinOf(DB.reports);
   const ranks = Object.keys(CITIES).map(k => ({k, v:indexOf(byCity(k)), n:byCity(k).length})).filter(x => x.v != null).sort((a, b) => b.v - a.v);
-  const lic = Object.values(CITIES).reduce((a, c) => a + c.lic, 0);
+  const lics = Object.keys(CITIES).map(k => figure(DB.official, k, 'licenze_taxi')).filter(Boolean);
+  const lic = lics.reduce((a, f) => a + Number(f.value), 0);
  $('#nationalStats').innerHTML = '<h3>' + icon('globe', {size:16}) + 'Statistiche nazionali</h3>' +
     '<div class="stats3"><div class="stat"><b style="color:' + m.c + '">' + (v == null ? '—' : v) + '</b><span>Indice 0–100</span></div>' +
     '<div class="stat"><b>' + fmtNum(DB.reports.length) + '</b><span>Segnalazioni</span></div>' +
     '<div class="stat"><b>' + (pm ? fmtEur(pm) : '—') + '</b><span>Costo medio/min</span></div></div>' +
     '<h3 style="margin-top:14px">Classifica città</h3>' +
     ranks.map((x, i) => '<div class="kv" style="cursor:pointer" onclick="selectCity(\'' + x.k + '\')"><span>' + (i+1) + '. ' + CITIES[x.k].n + '</span><b style="display:flex;align-items:center;gap:5px;color:' + mood(x.v).c + '">' + '<span class="gauge-mini">' + gaugeSvg(x.v, {width:40}) + '</span><span class="rank-val">' + x.v + '/100</span> <span class="muted rank-n">(' + x.n + ')</span></b></div>').join('') +
-    '<div class="muted" style="margin-top:6px">Licenze nelle città monitorate: ' + fmtNum(lic) + ' (fonte: ' + LIC_SRC + ')</div>';
+    (lics.length ? '<div class="muted" style="margin-top:6px">Licenze taxi nelle città monitorate: ' + fmtNum(lic) + '. ' + esc(sourceLine(lics[0])) + (lics[0].stale ? ' ' + staleBadge() : '') + '</div>' : '');
 }
 function renderCityStats(k){
   const c = CITIES[k], reps = byCity(k), v = indexOf(reps), m = mood(v), pm = perMinOf(reps);
   const neg = reps.filter(r => r.type !== 'positiva'), cnt = {};
   neg.forEach(r => cnt[r.type] = (cnt[r.type] || 0) + 1);
   const probs = Object.keys(cnt).sort((a, b) => cnt[b] - cnt[a]);
-  const ratio = c.dem/c.lic, gross = pm ? pm*60*OCCUPANCY : null;
-  const rc = ratio > 6 ? '#dc2626' : ratio > 4 ? '#f97316' : '#16a34a';
+  const lic = figure(DB.official, k, 'licenze_taxi'), ts = figure(DB.official, k, 'tariffa_partenza'),
+    tk = figure(DB.official, k, 'tariffa_km'), std = figure(DB.official, k, 'corsa_standard');
  $('#cityStats').innerHTML =
     '<h3>' + icon('landmark', {size:15}) + c.n + '</h3>' +
     '<div class="thermo">' + gaugeSvg(v, {width:160}) + '<div class="val" style="font-size:30px">' + (v == null ? '—' : v) + '<span style="font-size:14px;color:var(--mut)">/100</span></div><div style="font-weight:700">' + m.l + '</div></div>' +
     '<h3 style="margin-top:10px">Andamento negli ultimi 12 mesi</h3><div id="trendCity" class="trend-box"></div>' +
+    '<h3 style="margin-top:12px">' + icon('landmark', {size:14}) + 'Dati ufficiali</h3>' +
+    (lic ? officialRow('Licenze taxi', fmtNum(Number(lic.value)), lic) : '') +
+    (ts && tk ? officialRow('Tariffa (partenza feriale diurna, al km)', fmtEur(Number(ts.value)) + ' + ' + fmtEur(Number(tk.value)) + '/km', ts) : '<div class="kv"><span>Tariffa comunale</span><b class="muted">delibera da verificare</b></div>') +
+    (std ? officialRow('Corsa standard (5 km e 5 minuti di attesa, feriale)', fmtEur(Number(std.value)), std) : '') +
+    '<div class="note" style="font-size:12px">Fabbisogno di licenze (metodologia ART) e redditi o ricavi dichiarati (MEF) non sono pubblicati per città da fonti ufficiali: non mostriamo stime.</div>' +
+    '<h3 style="margin-top:12px">' + icon('bell', {size:14}) + 'Dati Safe Taxi</h3>' +
     '<div class="kv"><span>Segnalazioni (verificate)</span><b>' + reps.length + ' (' + reps.filter(r => r.verified).length + ')</b></div>' +
-    '<div class="kv"><span>Licenze taxi <span class="muted">(' + LIC_SRC + ')</span></span><b>' + fmtNum(c.lic) + '</b></div>' +
-    '<div class="kv"><span>Richieste giornaliere stimate</span><b>' + fmtNum(c.dem) + ' <span class="badge b-demo">demo</span></b></div>' +
-    '<div class="kv"><span>Richieste per licenza al giorno</span><b style="color:' + rc + '">' + fmtNum(ratio, 1) + '</b></div>' +
-    '<div class="kv"><span>Costo medio al minuto</span><b>' + (pm ? fmtEur(pm) : '—') + '</b></div>' +
-    '<div class="kv"><span>Tariffa comunale (partenza feriale, al km)</span><b>' + fmtEur(c.t.start) + ' + ' + fmtEur(c.t.km) + '/km' + (c.tv ? '' : ' <span class="badge b-demo">da verificare</span>') + '</b></div>' +
-    (c.tv ? '<div class="muted" style="font-size:12px">Fonte: ' + esc(c.tSrc) + '</div>' : '') +
-    '<div class="kv"><span>Ricavo lordo orario stimato</span><b>' + (gross ? fmtEur(gross) : '—') + '</b></div>' +
-    '<div class="kv"><span>Reddito medio dichiarato</span><b class="muted">non pubblicato per città</b></div>' +
+    '<div class="kv"><span>Costo medio al minuto (dalle segnalazioni)</span><b>' + (pm ? fmtEur(pm) : '—') + '</b></div>' +
     '<h3 style="margin-top:12px">Problemi segnalati</h3>' +
     (probs.length ? probs.map(p => { const pc = Math.round(cnt[p]/neg.length*100); return '<div class="pbar"><span class="t">' + TYPES[p] + '</span><span class="p"><i style="width:' + pc + '%"></i></span><b>' + pc + '%</b></div>'; }).join('') : '<p class="muted">Nessuna criticità segnalata.</p>') +
-    '<div class="note">Ricavo lordo orario = costo medio al minuto × 60 × occupazione ipotizzata (' + Math.round(OCCUPANCY*100) + '%). Il confronto con i redditi dichiarati si fa solo su dati aggregati ufficiali e con metodologia pubblica, mai sul singolo tassista.</div>';
+    '<div class="note">Il confronto con i redditi dichiarati si farà solo su dati ufficiali aggregati e con metodologia pubblica, mai sul singolo tassista.</div>';
   if (!loading) showTrend('trendCity', k);
+}
+// Dato ufficiale con la sua fonte (link) e, se la pubblicazione ha più di 12 mesi, l'avviso.
+const staleBadge = () => '<span class="badge b-demo">ultima pubblicazione ufficiale oltre 12 mesi fa</span>';
+function officialRow(label, value, f){
+  return '<div class="kv"><span>' + label + '</span><b style="white-space:nowrap">' + value + '</b></div>' +
+    '<div class="muted" style="font-size:12px;margin:-2px 0 6px"><a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(sourceLine(f)) + '</a>' + (f.stale ? ' ' + staleBadge() : '') + '</div>';
 }
 
 /* ================= PRENOTA ================= */

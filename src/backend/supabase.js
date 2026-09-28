@@ -109,6 +109,13 @@ export function createSupabaseBackend(url, key){
       media = {photos, replies};
       return data.map(r => Object.assign(fromDbReport(r), {photos: photos[r.id] || [], replies: replies[r.id] || []}));
     },
+    // Dati ufficiali per città con fonte e data (IMP-06); la regola di aggiornamento la applica src/lib/official.js.
+    async officialFigures(){
+      const {data, error} = await sb.from('official_figures').select('city_key,metric,value,unit,source_name,source_url,reference_year,published_on,rule');
+      if (error) fail(error);
+      return data.map(f => ({city:f.city_key, metric:f.metric, value:Number(f.value), unit:f.unit, source:f.source_name, url:f.source_url,
+        year:f.reference_year, published:f.published_on, rule:f.rule}));
+    },
     // Termometro a fine mese negli ultimi 12 mesi (IMP-05b), Italia o città.
     async thermometerTrend(city){
       const {data, error} = await sb.rpc('get_thermometer_trend', {p_city:city || null, p_months:12});

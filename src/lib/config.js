@@ -1,22 +1,21 @@
 /* ================= CONFIGURAZIONE ================= */
 // Verifiche del 27/09/2026 su fonti ufficiali (dettaglio e link in docs/fonti-dati.md).
 // lic = licenze taxi attive: ART, dataset "Diffusione TAXI e NCC" 2024 (verificato).
-// dem = richieste giornaliere stimate: DEMO, nessuna fonte ufficiale.
 // t = tariffa diurna feriale: quota di partenza e prima fascia al km (senza tariffa oraria né supplementi).
 //     tv:true = verificata sul tariffario ufficiale (tSrc); tv:false = DA VERIFICARE, valori DEMO.
 export const LIC_SRC = 'ART, Diffusione TAXI e NCC 2024';
 export const CITIES = {
-  roma:    {n:'Roma', lat:41.9028,lng:12.4964,lic:7701,dem:38000,t:{start:3.5,km:1.33},tv:true,tSrc:'Roma Capitale, Delibera G.C. n. 157 del 21/05/2026'},
-  milano:  {n:'Milano', lat:45.4642,lng:9.1900, lic:4855,dem:30000,t:{start:4.1,km:1.32},tv:true,tSrc:'Regione Lombardia, D.G.R. XII/2569 del 17/06/2024, confermata dalla D.G.R. XII/4445 del 26/05/2025'},
-  napoli:  {n:'Napoli', lat:40.8518,lng:14.2681,lic:2364,dem:16000,t:{start:4.0,km:1.19},tv:true,tSrc:'Comune di Napoli, Delibera G.C. n. 258 del 27/06/2024'},
-  torino:  {n:'Torino', lat:45.0703,lng:7.6869, lic:1501,dem:9000, t:{start:3.5,km:1.75},tv:true,tSrc:'Città Metropolitana di Torino, D.C.R. n. 186 del 14/06/2023'},
-  firenze: {n:'Firenze', lat:43.7696,lng:11.2558,lic:724, dem:6500, t:{start:3.8,km:1.10},tv:true,tSrc:'Comune di Firenze, tabella tariffe taxi in vigore dal 1/5/2024'},
-  bologna: {n:'Bologna', lat:44.4949,lng:11.3426,lic:722, dem:5000, t:{start:3.9,km:1.45},tv:true,tSrc:'Comune di Bologna, tariffe in vigore dal 1/1/2025'},
-  venezia: {n:'Venezia', lat:45.4408,lng:12.3155,lic:120, dem:3000, t:{start:3.5,km:1.30},tv:false},
-  genova:  {n:'Genova', lat:44.4056,lng:8.9463, lic:868, dem:5000, t:{start:3.5,km:1.25},tv:false},
-  palermo: {n:'Palermo', lat:38.1157,lng:13.3615,lic:319, dem:4500, t:{start:3.3,km:1.20},tv:false},
-  bari:    {n:'Bari',    lat:41.1171,lng:16.8719,lic:150, dem:2500, t:{start:3.3,km:1.20},tv:false},
-  catania: {n:'Catania', lat:37.5079,lng:15.0830,lic:188, dem:2500, t:{start:3.3,km:1.20},tv:false}
+  roma:    {n:'Roma', lat:41.9028,lng:12.4964,lic:7701,t:{start:3.5,km:1.33},tv:true,tSrc:'Roma Capitale, Delibera G.C. n. 157 del 21/05/2026'},
+  milano:  {n:'Milano', lat:45.4642,lng:9.1900, lic:4855,t:{start:4.1,km:1.32},tv:true,tSrc:'Regione Lombardia, D.G.R. XII/2569 del 17/06/2024, confermata dalla D.G.R. XII/4445 del 26/05/2025'},
+  napoli:  {n:'Napoli', lat:40.8518,lng:14.2681,lic:2364,t:{start:4.0,km:1.19},tv:true,tSrc:'Comune di Napoli, Delibera G.C. n. 258 del 27/06/2024'},
+  torino:  {n:'Torino', lat:45.0703,lng:7.6869, lic:1501,t:{start:3.5,km:1.75},tv:true,tSrc:'Città Metropolitana di Torino, D.C.R. n. 186 del 14/06/2023'},
+  firenze: {n:'Firenze', lat:43.7696,lng:11.2558,lic:724, t:{start:3.8,km:1.10},tv:true,tSrc:'Comune di Firenze, tabella tariffe taxi in vigore dal 1/5/2024'},
+  bologna: {n:'Bologna', lat:44.4949,lng:11.3426,lic:722, t:{start:3.9,km:1.45},tv:true,tSrc:'Comune di Bologna, tariffe in vigore dal 1/1/2025'},
+  venezia: {n:'Venezia', lat:45.4408,lng:12.3155,lic:120, t:{start:3.5,km:1.30},tv:false},
+  genova:  {n:'Genova', lat:44.4056,lng:8.9463, lic:868, t:{start:3.5,km:1.25},tv:false},
+  palermo: {n:'Palermo', lat:38.1157,lng:13.3615,lic:319, t:{start:3.3,km:1.20},tv:false},
+  bari:    {n:'Bari',    lat:41.1171,lng:16.8719,lic:150, t:{start:3.3,km:1.20},tv:false},
+  catania: {n:'Catania', lat:37.5079,lng:15.0830,lic:188, t:{start:3.3,km:1.20},tv:false}
 };
 // st = valutazione media utenti Safe Taxi (DEMO), rv = n. recensioni, ext = rating esterno (null = non disponibile)
 // f = servizi dichiarati dalla cooperativa sul proprio sito (solo quelli verificati).
@@ -66,6 +65,5 @@ export const FILTER_ICONS = {rec:'trophy',h24:'clock',airport:'plane-takeoff',ap
 export const LEVELS = [{min:0,name:'Passeggero'},{min:200,name:'Osservatore'},{min:500,name:'Contributor'},{min:1000,name:'Guardiano'}];
 export const REWARDS = [{n:'Buono trasporto pubblico 10 €',c:500},{n:'Sconto 15 € su corsa partner',c:1000},{n:'Donazione 20 € a ONLUS sicurezza stradale',c:1500}];
 export const MIN_DRIVER_REPORTS = 5;
-export const OCCUPANCY = 0.55; // tasso di occupazione ipotizzato per stima ricavo orario (DEMO)
 // Punti: stessi valori per segnalazioni positive e negative (disciplina Omnibus, D.Lgs. 26/2023)
 export const POINTS = {report:50, attachments:20, rideRating:10};
