@@ -16,7 +16,7 @@
 
 | Categoria Play | Dato | Obbligatorio? | Finalità | Dove/quanto |
 |---|---|---|---|---|
-| Posizione → Posizione precisa | Posizione della segnalazione | Facoltativo | Funzionalità dell'app | Esatta solo per i moderatori; pubblica approssimata a ~100 m |
+| Posizione → Posizione precisa | Posizione della segnalazione (obbligatoria per le segnalazioni di attesa/coda, indicata dall'utente con il GPS o cercando un indirizzo) | Facoltativo | Funzionalità dell'app | Esatta solo per i moderatori; pubblica approssimata a ~100 m |
 | Posizione → Posizione precisa | Posizione durante la condivisione live | Facoltativo | Funzionalità dell'app | Cancellata a fine corsa (al massimo 3 ore) |
 | Posizione → Posizione precisa | Verifica della corsa (bollino "corsa verificata", solo account con email confermata) | Automatico durante una corsa avviata dall'utente | Prevenzione delle frodi, sicurezza e conformità | Solo l'ultimo punto, cancellato a fine corsa; restano durata e km, cancellati dopo 7 giorni |
 | Informazioni personali → Nome | Nome e cognome del segnalatore | Obbligatorio per inviare una segnalazione | Funzionalità, prevenzione frodi | Mai pubblico; cancellato con l'account |

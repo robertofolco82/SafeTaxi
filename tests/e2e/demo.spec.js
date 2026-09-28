@@ -172,6 +172,33 @@ test('descrizione: con 4–5 stelle basta "OK", con 1–3 servono 20 caratteri',
   await expect(page.locator('#toast')).toContainText('Segnalazione anonima inviata');
 });
 
+test('segnalazione di attesa/coda senza targa e heatmap delle attese (IMP-07)', async ({page}) => {
+  await page.locator('nav.tabs').getByRole('button', {name: /Segnala/}).click();
+  await page.check('#waitMode');
+  await expect(page.locator('#reportForm [name=targa]')).toBeHidden();
+  await expect(page.locator('#reportForm [name=licenza]')).toBeHidden();
+  await page.fill('#reportForm [name=name]', 'Mario Rossi');
+  await page.selectOption('#reportCity', 'roma');
+  await page.fill('#waitMin', '45');
+  await page.locator('#reportStars span').nth(1).click();
+  await page.fill('#reportForm [name=description]', 'Nessun taxi al parcheggio, coda di oltre trenta persone.');
+  await page.check('#reportForm [name=consent]');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText("luogo dell'attesa");
+  await page.fill('#waitSearch', 'Stazione Termini');
+  await page.getByRole('button', {name: 'Cerca', exact: true}).last().click();
+  await page.locator('#waitResults button').first().click();
+  await page.fill('#waitPlace', 'Termini, uscita via Marsala');
+  await page.locator('#reportForm').evaluate(f => f.requestSubmit());
+  await expect(page.locator('#toast')).toContainText('Segnalazione di attesa');
+  await expect(page.locator('#feed')).toContainText('Attesa 45 min');
+  await page.locator('nav.tabs').getByRole('button', {name: /Mappa/}).click();
+  await page.getByRole('button', {name: 'Attese (ultime 2 ore)'}).click();
+  await expect(page.locator('#waitSummary')).toContainText('Termini, uscita via Marsala');
+  await expect(page.locator('#waitSummary')).toContainText('45 min · Attesa molto lunga');
+  await expect(page.locator('#legendWait')).toBeVisible();
+});
+
 test('SOS: il 112 non parte mai senza conferma', async ({page}) => {
   const navigations = [];
   page.on('framenavigated', f => navigations.push(f.url()));

@@ -56,10 +56,11 @@ export const STORES = {
  freenow:{ios:'https://apps.apple.com/it/app/id357852748',and:'https://play.google.com/store/apps/details?id=taxi.android.client',web:'https://www.free-now.com/it/'},
  whereareu:{ios:'https://apps.apple.com/it/app/id888964800',and:'https://play.google.com/store/apps/details?id=it.Beta80Group.whereareu',web:'https://apps.apple.com/it/app/id888964800'}
 };
-export const TYPES = {positiva:'Esperienza positiva',tariffa:'Tariffa scorretta',rifiuto:'Rifiuto corsa o POS',percorso:'Percorso allungato',comportamento:'Comportamento scorretto',sicurezza:'Guida pericolosa',igiene:'Veicolo in cattive condizioni',altro:'Altro'};
+export const TYPES = {positiva:'Esperienza positiva',tariffa:'Tariffa scorretta',rifiuto:'Rifiuto corsa o POS',percorso:'Percorso allungato',comportamento:'Comportamento scorretto',sicurezza:'Guida pericolosa',igiene:'Veicolo in cattive condizioni',altro:'Altro',attesa:'Attesa lunga / coda'};
 // Icona per tipo di segnalazione (nome icona in src/lib/icons.js): mai nel testo, solo nelle liste con markup.
-export const TYPE_ICONS = {positiva:'thumbs-up',tariffa:'banknote',rifiuto:'ban',percorso:'route',comportamento:'octagon-alert',sicurezza:'triangle-alert',igiene:'spray-can',altro:'circle-help'};
-export const NEG = Object.keys(TYPES).filter(k => k !== 'positiva');
+export const TYPE_ICONS = {positiva:'thumbs-up',tariffa:'banknote',rifiuto:'ban',percorso:'route',comportamento:'octagon-alert',sicurezza:'triangle-alert',igiene:'spray-can',altro:'circle-help',attesa:'hourglass'};
+// Criticità di una corsa in taxi: l'attesa/coda è una segnalazione a parte (IMP-07), senza taxi.
+export const NEG = Object.keys(TYPES).filter(k => k !== 'positiva' && k !== 'attesa');
 export const FILTERS = {all:'Tutti',rec:'Recommended',h24:'24/7',airport:'Aeroporti',app:'App'};
 export const FILTER_ICONS = {rec:'trophy',h24:'clock',airport:'plane-takeoff',app:'smartphone'};
 export const LEVELS = [{min:0,name:'Passeggero'},{min:200,name:'Osservatore'},{min:500,name:'Contributor'},{min:1000,name:'Guardiano'}];

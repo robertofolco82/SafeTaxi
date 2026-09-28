@@ -18,6 +18,7 @@ import {textFlags, FLAG_HINTS, descMin, descHelp, descPlaceholder} from './lib/t
 import {gaugeSvg} from './lib/gauge.js';
 import {trendSvg} from './lib/trend.js';
 import {FEED_PAGE} from './lib/feed.js';
+import {recentWaits, waitLevel, WAIT_WINDOW_HOURS} from './lib/waits.js';
 import {addRecent, saveFavorite, renameFavorite, removeFavorite, sortFavorites, parsePlaces, FAVORITE_LABELS} from './lib/places.js';
 import {publicBase, openExternal, isNative} from './native/platform.js';
 import {getPosition, watchRide} from './native/location.js';
@@ -254,7 +255,9 @@ function renderFeed(){
     '<div class="row between"><b>' + esc(CITIES[r.city] ? CITIES[r.city].n : r.city) + '</b><span class="muted">' + ago(r.createdAt) + '</span></div>' +
     '<div class="row between" style="margin:4px 0"><span style="font-size:12px;display:inline-flex;align-items:center;gap:4px">' + icon(TYPE_ICONS[r.type] || 'circle-help', {size:13}) + (TYPES[r.type] || '') + '</span>' + starsHtml(r.rating) + '</div>' +
     '<div style="font-size:13px">' + esc(r.description) + '</div>' + amountsLine(r.meter, r.cost) +
-    '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '') + ' ' +
+    '<div class="muted" style="margin-top:4px;display:flex;align-items:center;gap:4px;flex-wrap:wrap">' + (r.type === 'attesa'
+      ? icon('hourglass', {size:13}) + '<b style="color:var(--txt)">Attesa ' + r.wait + ' min</b>' + (r.place ? ' · ' + esc(r.place) : '') + (r.waitedAt ? ' · ore ' + hhmm(r.waitedAt) : '')
+      : icon('car-taxi-front', {size:13}) + esc(maskPlate(r.targa)) + ((r.from || r.to) ? ' · ' + esc(r.from) + ' → ' + esc(r.to) : '')) + ' ' +
     (r.verified ? '<span class="badge b-ok">verificata</span>' : '<span class="badge">anonima</span>') + (r.rideVerified ? '<span class="badge b-ok">corsa verificata</span>' : '') + (r.attachments ? '<span style="display:inline-flex;align-items:center;gap:3px">' + icon('paperclip', {size:12}) + r.attachments + '</span>' : '') + '</div>' +
     (r.photos && r.photos.length ? '<div class="feed-photos">' + r.photos.slice(0, 3).map(u => '<img src="' + esc(u) + '" alt="Foto allegata (volti e targhe sfocati)" loading="lazy">').join('') + '</div>' : '') +
     (r.replies || []).map(d => '<div class="reply"><b>' + icon('message-square', {size:13}) + 'Replica del tassista</b> <span class="muted">· verificata dal moderatore</span><br>' + esc(d.body) +
@@ -615,7 +618,7 @@ async function afterSubmit(){
 let reportRating = 0, attachments = [], reportGeo = null;
 function initReportForm(){
  $('#reportCity').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(CITIES).map(k => '<option value="' + k + '">' + CITIES[k].n + '</option>').join('');
- $('#reportType').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(TYPES).map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
+ $('#reportType').innerHTML = '<option value="">Seleziona…</option>' + Object.keys(TYPES).filter(k => k !== 'attesa').map(k => '<option value="' + k + '">' + TYPES[k] + '</option>').join('');
  starPicker('reportStars', setReportRating);
  ['camPhoto','camVideo','micAudio','gallery'].forEach(id => document.getElementById(id).addEventListener('change', onFiles));
   $('#reportDesc').addEventListener('input', e => showTextHint('#descHint', e.target.value));
@@ -679,6 +682,7 @@ async function submitReport(e){
   e.preventDefault();
   if (submitting) return;
   const f = e.target, d = Object.fromEntries(new FormData(f).entries()), errs = [];
+  if (d.waitMode) return submitWait(f, d);
   if (!d.name || d.name.trim().length < 3) errs.push('nome e cognome');
   if (!d.licenza || !d.licenza.trim()) errs.push('licenza');
   if (!/^[A-Z]{2}\d{3}[A-Z]{2}$/.test(normPlate(d.targa))) errs.push('targa (formato AB123CD)');
@@ -702,6 +706,46 @@ async function submitReport(e){
     f.reset(); showTextHint('#descHint', ''); setReportRating(0); starPicker('reportStars', setReportRating); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
     await afterSubmit(); openTab('home');
     toast(sentMessage(res, 'Segnalazione') + (res.attachmentErrors && res.attachmentErrors.length ? ' Allegati non caricati: ' + res.attachmentErrors.join('; ') : ''));
+  } catch(err) { toast(err.message); }
+  finally { submitting = false; if (btn) btn.disabled = false; }
+}
+// IMP-07: segnalazione di attesa/coda, senza targa né licenza, con luogo obbligatorio.
+function setWaitMode(on){
+  ['taxiFields', 'rideFields', 'amountFields'].forEach(id => $('#' + id).classList.toggle('hidden', on));
+  $('#waitFields').classList.toggle('hidden', !on);
+  $('#locLabel').textContent = on ? 'Posizione (GPS)' : 'Luogo dell\'accaduto';
+  if (on && !$('#waitAt').value) { const n = new Date(Date.now() - new Date().getTimezoneOffset()*60000); $('#waitAt').value = n.toISOString().slice(0, 16); }
+}
+let waitResults = [];
+async function searchWaitPlace(){ waitResults = await searchAddress($('#waitSearch').value.trim(), $('#waitResults'), 'pickWaitPlace'); }
+function pickWaitPlace(i){
+  const x = waitResults[i]; if (!x) return;
+  reportGeo = {lat:x.lat, lng:x.lng}; $('#waitResults').innerHTML = '';
+  $('#reportLoc').textContent = x.name + ' (' + x.lat.toFixed(4) + ', ' + x.lng.toFixed(4) + ')';
+  if (!$('#waitPlace').value) $('#waitPlace').value = x.name;
+  const nc = nearestCity(x); if (nc.dist < 60 && !$('#reportCity').value) $('#reportCity').value = nc.key;
+}
+async function submitWait(f, d){
+  const errs = [], wait = d.waitMin === '' ? NaN : +d.waitMin, pos = italianPosition(reportGeo);
+  const at = d.waitAt ? new Date(d.waitAt).getTime() : Date.now();
+  if (!d.name || d.name.trim().length < 3) errs.push('nome e cognome');
+  if (!d.city) errs.push('città');
+  if (!(wait >= 0 && wait <= 600 && Number.isInteger(wait))) errs.push('minuti di attesa (0–600)');
+  if (pos.lat == null) errs.push('luogo dell\'attesa (cerca un indirizzo o usa il GPS)');
+  if (!reportRating) errs.push('valutazione');
+  if ((d.description || '').trim().length < descMin(reportRating)) errs.push(reportRating >= 4 ? 'commento (anche solo "OK")' : 'descrizione dell\'accaduto (min. 20 caratteri)');
+  if (!(at <= Date.now() + 300e3 && at >= Date.now() - 24*3600e3)) errs.push('orario nelle ultime 24 ore');
+  if (!d.consent) errs.push('dichiarazione e privacy');
+  if (errs.length) return toast('Completa: ' + errs.join(', '));
+  const btn = f.querySelector('button[type=submit]');
+  submitting = true; if (btn) btn.disabled = true;
+  try {
+    const res = await backend.submitWaitReport({name:d.name.trim(), city:d.city, rating:reportRating, description:d.description.trim(),
+      wait, lat:pos.lat, lng:pos.lng, place:(d.waitPlace || '').trim(), waitedAt:at, files:attachments.map(a => ({kind:a.kind, blob:a.file, faces:a.faces}))});
+    attachments.forEach(a => a.url && URL.revokeObjectURL(a.url)); attachments = []; renderThumbs();
+    f.reset(); setWaitMode(false); showTextHint('#descHint', ''); setReportRating(0); starPicker('reportStars', setReportRating); reportGeo = null; $('#reportLoc').textContent = 'Non allegato';
+    await afterSubmit(); openTab('home');
+    toast(sentMessage(res, 'Segnalazione di attesa'));
   } catch(err) { toast(err.message); }
   finally { submitting = false; if (btn) btn.disabled = false; }
 }
@@ -730,17 +774,49 @@ function initItalyMap(){
     cityLayers[k] = {heat, dot};
   });
  italyMap.on('zoomend', toggleLayersByZoom);
-  buildReportLayer();
+  buildReportLayer(); buildWaitLayer();
 }
 function buildReportLayer(){
   if (!italyMap) return;
   if (reportLayer) italyMap.removeLayer(reportLayer);
   reportLayer = L.layerGroup();
-  DB.reports.forEach(r => { if (r.lat == null) return; L.circle([r.lat, r.lng], {radius:350, weight:0, fillColor: r.type === 'positiva' ? '#16a34a' : '#dc2626', fillOpacity:0.4}).addTo(reportLayer); });
+  DB.reports.forEach(r => { if (r.lat == null || r.type === 'attesa') return; L.circle([r.lat, r.lng], {radius:350, weight:0, fillColor: r.type === 'positiva' ? '#16a34a' : '#dc2626', fillOpacity:0.4}).addTo(reportLayer); });
  toggleLayersByZoom();
+}
+// IMP-07: heatmap delle attese delle ultime 2 ore, raggruppate per punto e colorate per minuti di attesa.
+let mapMode = 'insoddisfazione', waitLayer = null;
+function setMapMode(m){
+  mapMode = m; $$('[data-mapmode]').forEach(b => b.classList.toggle('on', b.dataset.mapmode === m));
+  $('#legendMood').classList.toggle('hidden', m !== 'insoddisfazione'); $('#legendWait').classList.toggle('hidden', m !== 'attese');
+  $('#mapTitle').textContent = m === 'attese' ? 'Mappa delle attese' : 'Mappa dell\'insoddisfazione';
+  buildWaitLayer(); toggleLayersByZoom();
+}
+const cssColor = v => getComputedStyle(document.documentElement).getPropertyValue(v.replace(/^var\(|\)$/g, '')).trim() || '#dc2626';
+function buildWaitLayer(){
+  const waits = recentWaits(DB.reports);
+  $('#waitSummary').innerHTML = mapMode !== 'attese' ? '' : waits.length
+    ? '<h3 style="margin-top:10px">' + icon('hourglass', {size:14}) + 'Attese nelle ultime ' + WAIT_WINDOW_HOURS + ' ore</h3>' + waits.slice(0, 8).map(w =>
+      '<div class="kv"><span>' + esc(w.place || 'Punto senza nome') + ' <span class="muted">· ' + esc(CITIES[w.city] ? CITIES[w.city].n : '') + ' · ' + ago(w.last) + '</span></span><b style="white-space:nowrap">' + w.avg + ' min · ' + waitLevel(w.avg).l + '</b></div>').join('')
+    : '<p class="muted" style="margin-top:8px">Nessuna attesa segnalata nelle ultime ' + WAIT_WINDOW_HOURS + ' ore.</p>';
+  if (!italyMap) return;
+  if (waitLayer) italyMap.removeLayer(waitLayer);
+  waitLayer = L.layerGroup();
+  waits.forEach(w => {
+    const lv = waitLevel(w.avg);
+    L.circleMarker([w.lat, w.lng], {radius:Math.min(22, 9 + 3*w.n), color:'#fff', weight:2, fillColor:cssColor(lv.c), fillOpacity:0.85}).addTo(waitLayer)
+      .bindTooltip(esc(w.place || 'Attesa segnalata') + ' · ' + lv.l + ': media ' + w.avg + ' min (max ' + w.max + ') · ' + w.n + ' segnalazioni · ultima ' + ago(w.last));
+  });
 }
 function toggleLayersByZoom(){
   if (!italyMap) return;
+  if (mapMode === 'attese') {
+    Object.values(cityLayers).forEach(l => { [l.heat, l.dot].forEach(x => { if (italyMap.hasLayer(x)) italyMap.removeLayer(x); }); });
+    if (reportLayer && italyMap.hasLayer(reportLayer)) italyMap.removeLayer(reportLayer);
+    if (waitLayer && !italyMap.hasLayer(waitLayer)) waitLayer.addTo(italyMap);
+    return;
+  }
+  if (waitLayer && italyMap.hasLayer(waitLayer)) italyMap.removeLayer(waitLayer);
+  Object.values(cityLayers).forEach(l => { if (!italyMap.hasLayer(l.dot)) l.dot.addTo(italyMap); });
   const city = italyMap.getZoom() >= 10;
  Object.values(cityLayers).forEach(l => { if (city && italyMap.hasLayer(l.heat)) italyMap.removeLayer(l.heat); if (!city && !italyMap.hasLayer(l.heat)) l.heat.addTo(italyMap); });
   if (reportLayer) { if (city && !italyMap.hasLayer(reportLayer)) reportLayer.addTo(italyMap); if (!city && italyMap.hasLayer(reportLayer)) italyMap.removeLayer(reportLayer); }
@@ -752,7 +828,7 @@ function refreshItalyMap(){
  l.heat.setStyle({fillColor:col}); l.heat.setRadius(heatRadius(v, reps.length));
  l.dot.setStyle({fillColor:col}); l.dot.setTooltipContent(CITIES[k].n + ' · ' + (v == null ? 'n.d.' : v) + '/100');
   });
-  buildReportLayer();
+  buildReportLayer(); buildWaitLayer(); toggleLayersByZoom();
 }
 function selectCity(k){ if (!CITIES[k]) return; if (italyMap) italyMap.flyTo([CITIES[k].lat, CITIES[k].lng], 12, {duration:0.8}); renderCityStats(k); }
 function resetItaly(){ if (italyMap) italyMap.flyTo([42.3, 12.6], 5, {duration:0.8}); }
@@ -1306,4 +1382,4 @@ document.addEventListener('DOMContentLoaded', init);
 
 // Funzioni richiamate dagli attributi onclick/onchange/onsubmit dell'HTML: nei moduli non sono globali,
 // quindi vanno esposte su window. Da sostituire gradualmente con addEventListener.
-Object.assign(window, {setFeedCity, searchFeed, loadFeed, toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
+Object.assign(window, {setMapMode, setWaitMode, searchWaitPlace, pickWaitPlace, setFeedCity, searchFeed, loadFeed, toggleStartSearch, searchStart, pickStart, pickPlace, clearRecents, saveCurrentFavorite, renameFav, deleteFav, openCitySearch, modAuto, openNotice, sendNotice, modNotice, deleteAccount, startLiveShare, stopLiveShare, confirmReject, modDecide, openBlur, openReply, renderModeration, saveBlur, sendReply, setPhotoPublic, undoBlur, acceptPrivacy, addContact, attachLocation, call112, callNumber, closeModal, doLookup, emailLogin, emailSignup, exportData, forgotPassword, googleLogin, fillShareText, logout, openModal, openPrivacy, openSOS, openShare, openStore, openTab, pick, pickDest, redeem, removeAtt, removeContact, renderBook, resetDemo, resetItaly, searchCity, searchDestination, selectCity, sendShare, setBookFilter, setFeedFilter, saveNewPassword, setPowerSave, simulateRide, submitRating, submitReport, toggleRide});
